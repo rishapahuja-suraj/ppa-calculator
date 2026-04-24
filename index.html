@@ -425,8 +425,9 @@ async function handleLOI(file){
 
     // Normalize parsed into the shape applyParsed expects
     parsed.found=[];
-    if(parsed.basePP) parsed.found.push({k:'Base Purchase Price',v:(parsed.currency==='GBP'?'£':parsed.currency==='EUR'?'€':'$')+Number(parsed.basePP).toLocaleString()+(parsed.currency?' ('+parsed.currency+')':'')});
-    if(parsed.validatedARR) parsed.found.push({k:'Validated ARR',v:'$'+(parsed.validatedARR/1e6).toFixed(1)+'M'+(parsed.currency&&parsed.currency!=='USD'?' ('+parsed.currency+')':'')});
+    const _sym=parsed.currency==='GBP'?'£':parsed.currency==='EUR'?'€':parsed.currency==='AUD'?'A$':parsed.currency==='CAD'?'C$':'$';
+    if(parsed.basePP) parsed.found.push({k:'Base Purchase Price',v:_sym+Number(parsed.basePP).toLocaleString()+(parsed.currency?' ('+parsed.currency+')':'')});
+    if(parsed.validatedARR) parsed.found.push({k:'Validated ARR',v:_sym+(parsed.validatedARR/1e6).toFixed(1)+'M'+(parsed.currency?' ('+parsed.currency+')':'')});
     if(parsed.wcCapPct) parsed.found.push({k:'WC Increase Cap',v:parsed.wcCapPct+'% of ARR'});
     if(parsed.drThreshPct) parsed.found.push({k:'Software DR Threshold',v:parsed.drThreshPct+'% of ARR'});
     if(parsed.indiaPct) parsed.found.push({k:'India Reserve Deduction',v:parsed.indiaPct+'% of Reserve & Surplus'});
