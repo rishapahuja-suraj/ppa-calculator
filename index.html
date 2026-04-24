@@ -354,7 +354,7 @@ if(typeof pdfjsLib!=='undefined')
   pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
 // ── State ─────────────────────────────────────────────────────────────────────
-let customAdjs=[],customId=0,dynamicMods=[],bsSections=[],loiHasHoldback=false;
+let customAdjs=[],customId=0,dynamicMods=[],bsSections=[],loiHasHoldback=false,dealCurrency='USD';
 // bsSections: [{title:'Assets'|'Liabilities'|'Equity', rows:[{name,tb,assumed,includeWC}]}]
 
 const $=id=>document.getElementById(id);
@@ -362,11 +362,11 @@ const n=id=>parseFloat($(id)?.value||'0')||0;
 const chk=id=>$(id)?.checked??true;
 const vv=id=>$(id)?.value||'';
 
-function fmtM(x){const m=x/1e6,s=m<0?'-':'';return s+'$'+Math.abs(m).toFixed(3)+'M'}
+function fmtM(x){const m=x/1e6,s=m<0?'-':'';return s+currSym()+Math.abs(m).toFixed(3)+'M'}
 function fmtK(x){
   if(!x&&x!==0)return '—';
   if(Math.abs(x)>=1e6)return fmtM(x);
-  const s=x<0?'-':'';return s+'$'+Math.abs(x/1000).toFixed(1)+'K';
+  const s=x<0?'-':'';return s+currSym()+Math.abs(x/1000).toFixed(1)+'K';
 }
 function pct(x,b){return b?((x/b)*100).toFixed(1)+'%':'—'}
 
@@ -564,6 +564,7 @@ function renderParseResult(p){
 }
 
 function applyParsed(p){
+  if(p.currency){dealCurrency=p.currency;}
   if(p.basePP)  $('basePP').value=p.basePP;
   if(p.arr)     $('validatedARR').value=p.arr;
   if(p.wcCapPct)     $('wcCapPct').value=p.wcCapPct;
@@ -597,51 +598,37 @@ function showMain(){$('mainContent').style.display='block';$('rightPanel').inner
 // ── ARR Upload ────────────────────────────────────────────────────────────────
 async function handleARR(file){
   if(!file)return;
+  $('arrLbl').textContent='Extracting with AI...';
   try{
     const ab=await file.arrayBuffer();
-    let rows=[];
+    let rows=[],tabName='';
     if(file.name.toLowerCase().endsWith('.csv')){
       rows=new TextDecoder().decode(ab).trim().split('\n').map(l=>l.split(',').map(c=>c.trim().replace(/^"|"$/g,'')));
+      tabName='CSV';
     }else{
       const wb=XLSX.read(ab,{type:'array'});
-      // look for ARR tab
       const tab=wb.SheetNames.find(s=>/arr/i.test(s))||wb.SheetNames[0];
+      tabName=tab;
       rows=XLSX.utils.sheet_to_json(wb.Sheets[tab],{header:1,defval:''});
     }
-    // Find a row with "validated" or "in-force" and a number
-    let arrVal=0;
-    for(const row of rows){
-      const rowStr=row.join(' ').toLowerCase();
-      if(/validated|in.force|total arr/.test(rowStr)){
-        for(const cell of row){
-          const v=parseFloat(String(cell).replace(/[$,]/g,''));
-          if(!isNaN(v)&&v>10000){arrVal=v;break;}
-        }
-        if(arrVal)break;
-      }
-    }
-    // Fallback: largest number in file
-    if(!arrVal){
-      for(const row of rows){
-        for(const cell of row){
-          const v=parseFloat(String(cell).replace(/[$,]/g,''));
-          if(!isNaN(v)&&v>arrVal)arrVal=v;
-        }
-      }
-    }
-    if(arrVal<50000)arrVal*=1e6;
-    if(arrVal){
-      $('validatedARR').value=arrVal;
-      $('arrLbl').textContent='✓ '+file.name+' — ARR: $'+(arrVal/1e6).toFixed(2)+'M';
+    const resp=await fetch('/api/parse-arr',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rows,sheetName:tabName})});
+    const data=await resp.json();
+    if(!resp.ok) throw new Error(data.error||'API error');
+    if(data.validatedARR){
+      $('validatedARR').value=data.validatedARR;
+      const sym=data.currency==='GBP'?'\u00a3':data.currency==='EUR'?'\u20ac':'$';
+      let lbl='\u2713 '+file.name+' \u2014 ARR: '+sym+(data.validatedARR/1e6).toFixed(2)+'M';
+      if(data.breakdown&&data.breakdown.length) lbl+=' ('+data.breakdown.map(b=>b.name+': '+sym+(b.amount/1e6).toFixed(1)+'M').join(', ')+')';
+      $('arrLbl').textContent=lbl;
       render();
+    }else{
+      $('arrLbl').textContent='\u2713 '+file.name+' \u2014 ARR not found, enter manually';
     }
   }catch(e){
-    $('arrLbl').textContent='Could not parse ARR file';
+    $('arrLbl').textContent='AI extraction failed: '+e.message;
   }
 }
 
-// ── BALANCE SHEET ─────────────────────────────────────────────────────────────
-function bsDrop(e){e.preventDefault();$('bsZone').classList.remove('drag');handleBS(e.dataTransfer.files[0]);}
 
 async function handleBS(file){
   if(!file)return;
@@ -1025,9 +1012,23 @@ function buildRight(){
   </div>`;
 }
 
+// ── CURRENCY SYMBOL ───────────────────────────────────────────────────────────
+function currSym(){
+  if(dealCurrency==='GBP') return '£';
+  if(dealCurrency==='EUR') return '€';
+  if(dealCurrency==='AUD') return 'A$';
+  if(dealCurrency==='CAD') return 'C$';
+  return '$';
+}
+function updateCurrencyUI(){
+  const sym=currSym();
+  document.querySelectorAll('.px2').forEach(el=>{el.textContent=sym;});
+}
+
 // ── RENDER ────────────────────────────────────────────────────────────────────
 function render(){
   if(!$('wfRows'))return;
+  updateCurrencyUI();
   const basePP=n('basePP'),arr=n('validatedARR');
   const wcCapPct=n('wcCapPct')||5,drThreshPct=n('drThreshPct')||50;
   const wcCap=arr*(wcCapPct/100),drThresh=arr*(drThreshPct/100);
