@@ -222,26 +222,6 @@ input.bsf:focus{border-color:var(--blue);background:#fff}
       </div>
     </div>
 
-    <!-- BALANCE SHEET SECTION -->
-    <div style="margin-bottom:14px">
-      <div class="slbl">Balance Sheet</div>
-      <div class="card">
-        <div class="cb op" style="padding:14px">
-          <div class="uz" id="bsZone" onclick="document.getElementById('bsFile').click()"
-            ondragover="event.preventDefault();this.classList.add('drag')"
-            ondragleave="this.classList.remove('drag')" ondrop="bsDrop(event)">
-            <input type="file" id="bsFile" accept=".csv,.xlsx,.xls" onchange="handleBS(this.files[0])"/>
-            <div class="uzi" style="font-size:18px">📈</div>
-            <div class="uzt" style="font-size:12px" id="bsTitle">Upload Balance Sheet (XLSX / CSV)</div>
-            <div class="uzs">Will read "FIN-68" tab if available · Account, Assumed, Not Assumed, Include in WC</div>
-          </div>
-          <div id="bsStatus"></div>
-          <div id="bsContent"></div>
-          <div id="bsSummary"></div>
-        </div>
-      </div>
-    </div>
-
     <!-- STEP 3: ADJUSTMENTS -->
     <div class="slbl">Step 3 — Closing Adjustments</div>
 
@@ -256,12 +236,26 @@ input.bsf:focus{border-color:var(--blue);background:#fff}
         <span class="chev op" id="chev-wc">▾</span>
       </div>
       <div class="cb op" id="body-wc">
+        <!-- Balance Sheet Upload - feeds WC and DR automatically -->
+        <div style="margin-bottom:14px">
+          <div class="uz" style="padding:12px" id="bsZone"
+            onclick="document.getElementById('bsFile').click()"
+            ondragover="event.preventDefault();this.classList.add('drag')"
+            ondragleave="this.classList.remove('drag')" ondrop="bsDrop(event)">
+            <input type="file" id="bsFile" accept=".csv,.xlsx,.xls" onchange="handleBS(this.files[0])"/>
+            <div class="uzi" style="font-size:16px">📊</div>
+            <div class="uzt" style="font-size:12px" id="bsTitle">Upload Balance Sheet (XLSX / CSV)</div>
+            <div class="uzs">AI extracts Working Capital + Deferred Revenue split automatically</div>
+          </div>
+          <div id="bsStatus"></div>
+        </div>
+
         <div style="font-size:11px;color:var(--lbl3);margin-bottom:12px;line-height:1.6">
           Tangible WC = Net AR − Assumed Liabilities &nbsp;·&nbsp; Increases capped at <strong id="wcCapLabel">5%</strong> of ARR
-          <br><span id="bsFeedNote" style="color:var(--blue);font-weight:500;display:none">✓ Auto-fed from Balance Sheet above — edit below to override</span>
+          
         </div>
         <div class="g2">
-          <div class="fg"><div class="fl">Net AR / Current Assets</div><div class="ir"><span class="px2">$</span><input type="number" class="f" id="wcNetAR" placeholder="0" oninput="render()"/></div></div>
+          <div class="fg"><div class="fl">Net AR / Current Assets <span id="bsFeedNote" style="color:var(--blue);display:none;font-weight:400">· from BS</span></div><div class="ir"><span class="px2">$</span><input type="number" class="f" id="wcNetAR" placeholder="0" oninput="render()"/></div></div>
           <div class="fg"><div class="fl">Employee Termination Costs</div><div class="ir"><span class="px2">$</span><input type="number" class="f" id="wcEmpTerm" placeholder="0" oninput="render()"/></div></div>
           <div class="fg"><div class="fl">Ongoing Lease Obligations</div><div class="ir"><span class="px2">$</span><input type="number" class="f" id="wcLease" placeholder="0" oninput="render()"/></div></div>
           <div class="fg"><div class="fl">Other Assumed Liabilities</div><div class="ir"><span class="px2">$</span><input type="number" class="f" id="wcOther" placeholder="0" oninput="render()"/></div></div>
@@ -353,88 +347,80 @@ input.bsf:focus{border-color:var(--blue);background:#fff}
 if(typeof pdfjsLib!=='undefined')
   pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-// ── State ─────────────────────────────────────────────────────────────────────
-let customAdjs=[],customId=0,dynamicMods=[],bsSections=[],loiHasHoldback=false,dealCurrency='USD';
-// bsSections: [{title:'Assets'|'Liabilities'|'Equity', rows:[{name,tb,assumed,includeWC}]}]
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let customAdjs=[], customId=0, dynamicMods=[], bsSections=[], loiHasHoldback=false;
+let dealCurrency='USD';
 
+// ── CURRENCY ──────────────────────────────────────────────────────────────────
+function currSym(){
+  return dealCurrency==='GBP'?'£':dealCurrency==='EUR'?'€':
+         dealCurrency==='AUD'?'A$':dealCurrency==='CAD'?'C$':'$';
+}
+function updateCurrencyUI(){
+  const sym=currSym();
+  document.querySelectorAll('.px2').forEach(el=>{ el.textContent=sym; });
+}
+
+// ── FORMATTERS ────────────────────────────────────────────────────────────────
+function fmtM(x){
+  const m=x/1e6, s=m<0?'-':'';
+  return s+currSym()+Math.abs(m).toFixed(3)+'M';
+}
+function fmtK(x){
+  if(x===null||x===undefined)return '—';
+  if(Math.abs(x)>=1e6) return fmtM(x);
+  if(Math.abs(x)===0) return currSym()+'0';
+  const s=x<0?'-':'';
+  return s+currSym()+Math.abs(x/1000).toFixed(1)+'K';
+}
+function pct(x,b){ return b?((x/b)*100).toFixed(1)+'%':'—'; }
+
+// ── DOM HELPERS ───────────────────────────────────────────────────────────────
 const $=id=>document.getElementById(id);
 const n=id=>parseFloat($(id)?.value||'0')||0;
 const chk=id=>$(id)?.checked??true;
 const vv=id=>$(id)?.value||'';
 
-function fmtM(x){const m=x/1e6,s=m<0?'-':'';return s+currSym()+Math.abs(m).toFixed(3)+'M'}
-function fmtK(x){
-  if(!x&&x!==0)return '—';
-  if(Math.abs(x)>=1e6)return fmtM(x);
-  const s=x<0?'-':'';return s+currSym()+Math.abs(x/1000).toFixed(1)+'K';
-}
-function pct(x,b){return b?((x/b)*100).toFixed(1)+'%':'—'}
-
+// ── CARD TOGGLE ───────────────────────────────────────────────────────────────
 function toggleCard(id){
-  const body=$('body-'+id),chev=$('chev-'+id),hdr=$('hdr-'+id);
-  if(!body)return;
+  const body=$('body-'+id), chev=$('chev-'+id), hdr=$('hdr-'+id);
+  if(!body) return;
   const open=body.classList.contains('op');
   body.classList.toggle('op',!open);
   chev.classList.toggle('op',!open);
-  if(hdr)hdr.classList.toggle('op',!open);
+  if(hdr) hdr.classList.toggle('op',!open);
 }
 
-// ── LOI ───────────────────────────────────────────────────────────────────────
-function loiDrop(e){e.preventDefault();$('uZone').classList.remove('drag');handleLOI(e.dataTransfer.files[0]);}
+// ── LOI PARSING ───────────────────────────────────────────────────────────────
+function loiDrop(e){ e.preventDefault(); $('uZone').classList.remove('drag'); handleLOI(e.dataTransfer.files[0]); }
 
 async function handleLOI(file){
-  if(!file)return;
+  if(!file) return;
   $('loiStatus').innerHTML='<div class="proc"><div class="spinner"></div>Reading LOI...</div>';
   try{
-    let text=file.name.toLowerCase().endsWith('.pdf')||file.type==='application/pdf'
-      ?await extractPDF(file):await file.text();
-    $('loiStatus').innerHTML='<div class="proc"><div class="spinner"></div>Extracting fields with AI...</div>';
+    const text = file.name.toLowerCase().endsWith('.pdf')||file.type==='application/pdf'
+      ? await extractPDF(file) : await file.text();
+    $('loiStatus').innerHTML='<div class="proc"><div class="spinner"></div>Extracting with AI...</div>';
+    const resp = await fetch('/api/parse-loi',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({text})
+    });
+    const parsed = await resp.json();
+    if(!resp.ok) throw new Error(parsed.error||'API error '+resp.status);
 
-    // Call the serverless function
-    let parsed=null;
-    try{
-      const resp=await fetch('/api/parse-loi',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({text})
-      });
-      const respData=await resp.json();
-      if(!resp.ok){
-        // Show specific error to user
-        const msg=respData.error||'Unknown error';
-        let hint='';
-        if(resp.status===404) hint='The /api/parse-loi function was not found. Make sure api/parse-loi.js is uploaded to GitHub.';
-        else if(msg.includes('ANTHROPIC_API_KEY')) hint='Add your ANTHROPIC_API_KEY in Vercel → Settings → Environment Variables, then redeploy.';
-        else hint=msg;
-        $('loiStatus').innerHTML=`<div style="font-size:12px;color:var(--red);background:var(--red-bg);border-radius:8px;padding:10px 14px;margin-top:10px;line-height:1.6">
-          <strong>AI extraction failed</strong><br>${hint}<br>
-          <span style="color:var(--lbl3);font-size:11px">You can still enter fields manually below.</span>
-        </div>`;
-        showMain();
-        return;
-      }
-      parsed=respData;
-    }catch(apiErr){
-      $('loiStatus').innerHTML=`<div style="font-size:12px;color:var(--red);background:var(--red-bg);border-radius:8px;padding:10px 14px;margin-top:10px;line-height:1.6">
-        <strong>Could not reach AI parser</strong><br>${apiErr.message}<br>
-        <span style="color:var(--lbl3);font-size:11px">Check that api/parse-loi.js is in your GitHub repo, then enter fields manually below.</span>
-      </div>`;
-      showMain();
-      return;
-    }
+    // Set currency first — everything else depends on it
+    if(parsed.currency){ dealCurrency=parsed.currency; }
 
-    // Normalize parsed into the shape applyParsed expects
+    // Build display-friendly found array using correct currency symbol
+    const sym=currSym();
     parsed.found=[];
-    const _sym=parsed.currency==='GBP'?'£':parsed.currency==='EUR'?'€':parsed.currency==='AUD'?'A$':parsed.currency==='CAD'?'C$':'$';
-    if(parsed.basePP) parsed.found.push({k:'Base Purchase Price',v:_sym+Number(parsed.basePP).toLocaleString()+(parsed.currency?' ('+parsed.currency+')':'')});
-    if(parsed.validatedARR) parsed.found.push({k:'Validated ARR',v:_sym+(parsed.validatedARR/1e6).toFixed(1)+'M'+(parsed.currency?' ('+parsed.currency+')':'')});
-    if(parsed.wcCapPct) parsed.found.push({k:'WC Increase Cap',v:parsed.wcCapPct+'% of ARR'});
-    if(parsed.drThreshPct) parsed.found.push({k:'Software DR Threshold',v:parsed.drThreshPct+'% of ARR'});
-    if(parsed.indiaPct) parsed.found.push({k:'India Reserve Deduction',v:parsed.indiaPct+'% of Reserve & Surplus'});
-    if(parsed.hasHoldback) parsed.found.push({k:'Holdback / Escrow',v:'Detected'});
-    if(parsed.additionalAdjustments&&parsed.additionalAdjustments.length){
-      parsed.additionalAdjustments.forEach(a=>parsed.found.push({k:a.name,v:a.description}));
-    }
+    if(parsed.basePP)      parsed.found.push({k:'Base Purchase Price', v:sym+Number(parsed.basePP).toLocaleString()+' ('+dealCurrency+')'});
+    if(parsed.validatedARR)parsed.found.push({k:'Validated ARR',       v:sym+(parsed.validatedARR/1e6).toFixed(1)+'M ('+dealCurrency+')'});
+    if(parsed.wcCapPct)    parsed.found.push({k:'WC Increase Cap',     v:parsed.wcCapPct+'% of ARR'});
+    if(parsed.drThreshPct) parsed.found.push({k:'SW DR Threshold',     v:parsed.drThreshPct+'% of ARR'});
+    if(parsed.indiaPct)    parsed.found.push({k:'India Reserve',       v:parsed.indiaPct+'% of Reserve & Surplus'});
+    if(parsed.hasHoldback) parsed.found.push({k:'Holdback / Escrow',   v:'Detected'});
+    if(parsed.additionalAdjustments) parsed.additionalAdjustments.forEach(a=>parsed.found.push({k:a.name,v:a.description}));
 
     applyParsed(parsed);
     renderParseResult(parsed);
@@ -442,7 +428,10 @@ async function handleLOI(file){
     showMain();
   }catch(err){
     console.error(err);
-    $('loiStatus').innerHTML='<div style="font-size:12px;color:var(--red);padding:8px 0">Could not read file — enter details manually.</div>';
+    $('loiStatus').innerHTML=`<div style="font-size:12px;color:var(--red);background:var(--red-bg);border-radius:8px;padding:10px 14px;margin-top:10px;line-height:1.6">
+      <strong>AI extraction failed</strong><br>${err.message}<br>
+      <span style="color:var(--lbl3);font-size:11px">Enter details manually below.</span>
+    </div>`;
     showMain();
   }
 }
@@ -459,99 +448,6 @@ async function extractPDF(file){
   return text;
 }
 
-function parseLOI(raw){
-  const t=raw.replace(/\s+/g,' ').trim();
-  const found=[];const result={found};
-
-  // Helper: extract a dollar/currency amount from a string
-  // Matches: $4,600,000 | GBP 33,000,000 | £20.5m | USD 9,000,000 etc.
-  function extractAmt(str){
-    // currency code + number
-    let m=str.match(/[A-Z]{3}\s*([\d,]+(?:\.\d+)?)/);
-    if(!m) m=str.match(/[$£€¥₹₩₪฿₫₴₦₲₡₵₸]\s*([\d,]+(?:\.\d+)?)/);
-    if(!m) return null;
-    let v=parseFloat(m[1].replace(/,/g,''));
-    if(v<50000)v*=1e6;
-    const ccy=str.match(/GBP|£/)? 'GBP':str.match(/EUR|€/)? 'EUR':str.match(/[A-Z]{3}/)?str.match(/[A-Z]{3}/)[0]:'USD';
-    return{v,ccy};
-  }
-
-  // ── Base PP: find "Acquisition Consideration" section then first currency amount ──
-  const acqIdx=t.search(/Acquisition Consideration/i);
-  if(acqIdx>=0){
-    const acqSnippet=t.slice(acqIdx,acqIdx+400);
-    // find "purchase price of [CURRENCY][AMOUNT]"
-    const ppSnip=acqSnippet.match(/purchase price of ([A-Z]{3}\s*[\d,]+(?:\.\d+)?|[$£€¥₹₩₪฿₫₴₦₲₡₵₸]\s*[\d,]+(?:\.\d+)?)/i);
-    if(ppSnip){
-      const r=extractAmt(ppSnip[1]);
-      if(r){
-        result.basePP=r.v;result.currency=r.ccy;
-        const sym=r.ccy==='GBP'?'£':r.ccy==='EUR'?'€':'$';
-        found.push({k:'Base Purchase Price',v:sym+r.v.toLocaleString()+' ('+r.ccy+')'});
-      }
-    }
-  }
-  // fallback
-  if(!result.basePP){
-    const m2=t.match(/purchase price of ([A-Z]{3}\s*[\d,]+(?:\.\d+)?|[$£€¥₹₩₪฿₫₴₦₲₡₵₸]\s*[\d,]+(?:\.\d+)?)/i)||
-              t.match(/([A-Z]{3}\s*[\d,]+(?:\.\d+)?|[$£€¥₹₩₪฿₫₴₦₲₡₵₸]\s*[\d,]+(?:\.\d+)?)\s*\((?:the\s*)?"?Purchase Price"?\)/i);
-    if(m2){const r=extractAmt(m2[1]);if(r){result.basePP=r.v;const sym=r.ccy==='GBP'?'£':r.ccy==='EUR'?'€':'$';found.push({k:'Base Purchase Price',v:sym+r.v.toLocaleString()+' ('+r.ccy+')'});}}
-  }
-
-  // ── ARR ──
-  const arrM=
-    t.match(/In-Force ARR[^.]{0,80}at least ([A-Z]{3}\s*[\d.]+\s*m|[$£€¥₹₩₪฿₫₴₦₲₡₵₸]\s*[\d.]+\s*m)/i)||
-    t.match(/at least ([A-Z]{3}\s*[\d.]+\s*m|[$£€¥₹₩₪฿₫₴₦₲₡₵₸]\s*[\d.]+\s*m)[^.]{0,60}In-Force ARR/i)||
-    t.match(/In-Force ARR[^.]{0,100}([A-Z]{3}\s*[\d.]+\s*m|[$£€¥₹₩₪฿₫₴₦₲₡₵₸]\s*[\d.]+\s*m)/i);
-  if(arrM){
-    const raw=arrM[1];
-    const numM=raw.match(/([\d.]+)/);
-    if(numM){
-      let v=parseFloat(numM[1])*1e6;
-      result.arr=v;
-      const ccy=raw.match(/GBP|£/)? 'GBP':raw.match(/EUR|€/)? 'EUR':'USD';
-      const sym=ccy==='GBP'?'£':ccy==='EUR'?'€':'$';
-      found.push({k:'Validated ARR',v:sym+(v/1e6).toFixed(1)+'M ('+ccy+')'});
-    }
-  }
-
-  // ── WC Cap % ──
-  const wcM=t.match(/increases? capped at (\d+(?:\.\d+)?)\s*%/i)||
-             t.match(/cap[^.]{0,50}(\d+(?:\.\d+)?)\s*% of[^.]{0,30}ARR/i);
-  if(wcM){result.wcCapPct=parseFloat(wcM[1]);found.push({k:'WC Increase Cap',v:wcM[1]+'% of ARR'});}
-
-  // ── DR Threshold % ──
-  const drM=t.match(/deferred revenue[^.]{0,60}exceeds?\s+(\d+(?:\.\d+)?)\s*%/i)||
-              t.match(/exceeds?\s+(\d+(?:\.\d+)?)\s*%[^.]{0,40}In-Force ARR/i);
-  if(drM){result.drThreshPct=parseFloat(drM[1]);found.push({k:'Software DR Threshold',v:drM[1]+'% of ARR'});}
-
-  // ── India / Reserve % ──
-  const indM=t.match(/(\d+(?:\.\d+)?)\s*% of[^.]{0,40}India[^.]{0,20}reserve and surplus/i)||
-               t.match(/Decrease[^.]{0,60}(\d+(?:\.\d+)?)\s*%[^.]{0,40}reserve and surplus/i);
-  if(indM){result.indiaPct=parseFloat(indM[1]);found.push({k:'India Reserve Deduction',v:indM[1]+'% of Reserve & Surplus'});}
-
-  // ── Holdback ──
-  if(/six.month anniversary|holdback release date|severance escrow|employee termination.*holdback/i.test(t)){
-    loiHasHoldback=true;
-    found.push({k:'Holdback / Escrow Clause',v:'Detected'});
-  }
-
-  // ── TARGET NAME: most reliable — from "with COMPANY (the Company/Seller)" ──
-  const tgtM=
-    t.match(/Proposed Transaction\) with ([A-Z][^("]+?)(?:,|\s+or one of).*?\("(?:Company|Seller)"/i)||
-    t.match(/transaction[^.]{0,40}with ([A-Z][^(",.]{3,50}?)\s*(?:,|\.|\().*?\("(?:Company|Seller)"/i)||
-    t.match(/with ([A-Z][a-zA-Z0-9\s,\.]+?(?:Inc\.|LLC|Ltd\.?|Corp\.?|Limited|GmbH)).*?\("(?:Company|Seller)"/i);
-  if(tgtM)result.targetName=tgtM[1].trim().replace(/\s+/g,' ');
-
-  // ── BUYER NAME: from opening signature block ──
-  const buyM=
-    t.match(/([A-Z][a-zA-Z\s]+(?:Capital|Group|Partners|Fund|LLC|Inc)\.?)\s*\(/)||
-    t.match(/^([A-Z][a-zA-Z\s]+(?:Capital|Group|Partners|Fund))/m);
-  if(buyM)result.buyerName=buyM[1].trim().replace(/CAPITAL\s*/,'').trim();
-
-  return result;
-}
-
 function renderParseResult(p){
   const el=$('loiStatus');
   if(!p.found||!p.found.length){
@@ -565,9 +461,8 @@ function renderParseResult(p){
 }
 
 function applyParsed(p){
-  if(p.currency){dealCurrency=p.currency;}
-  if(p.basePP)  $('basePP').value=p.basePP;
-  if(p.arr)     $('validatedARR').value=p.arr;
+  if(p.basePP)       $('basePP').value=p.basePP;
+  if(p.validatedARR) $('validatedARR').value=p.validatedARR;
   if(p.wcCapPct)     $('wcCapPct').value=p.wcCapPct;
   if(p.drThreshPct)  $('drThreshPct').value=p.drThreshPct;
   if(p.targetName)   $('dealName').value=p.targetName;
@@ -578,31 +473,29 @@ function applyParsed(p){
       loiNote:`Deduct ${p.indiaPct}% of India subsidiary Reserve & Surplus balance at Closing`,
       amtId:'indiaAmt',amtLabel:'Reserve & Surplus Balance',pctId:'indiaPct',pctDefault:p.indiaPct,pctLabel:'Deduction %'});
   }
-  // Additional non-standard adjustments from Claude
   if(p.additionalAdjustments&&p.additionalAdjustments.length){
     p.additionalAdjustments.forEach((adj,i)=>{
       const id='adj_'+i;
       dynamicMods=dynamicMods.filter(m=>m.id!==id);
-      // Only add if it looks like a percentage-based or dollar adjustment
-      dynamicMods.push({id,title:adj.name,enabled:true,
-        loiNote:adj.description,
+      dynamicMods.push({id,title:adj.name,enabled:true,loiNote:adj.description,
         amtId:id+'Amt',amtLabel:'Amount',pctId:id+'Pct',pctDefault:100,pctLabel:'Applied %'});
     });
   }
   renderDynamic();
-  if(p.hasHoldback){loiHasHoldback=true;$('holdbackSection').style.display='block';}
+  if(p.hasHoldback){ loiHasHoldback=true; $('holdbackSection').style.display='block'; }
+  updateCurrencyUI();
 }
 
-function skipLOI(){showMain();}
-function showMain(){$('mainContent').style.display='block';$('rightPanel').innerHTML=buildRight();render();}
+function skipLOI(){ showMain(); }
+function showMain(){ $('mainContent').style.display='block'; $('rightPanel').innerHTML=buildRight(); render(); }
 
-// ── ARR Upload ────────────────────────────────────────────────────────────────
+// ── ARR UPLOAD ────────────────────────────────────────────────────────────────
 async function handleARR(file){
-  if(!file)return;
+  if(!file) return;
   $('arrLbl').textContent='Extracting with AI...';
   try{
     const ab=await file.arrayBuffer();
-    let rows=[],tabName='';
+    let rows=[], tabName='';
     if(file.name.toLowerCase().endsWith('.csv')){
       rows=new TextDecoder().decode(ab).trim().split('\n').map(l=>l.split(',').map(c=>c.trim().replace(/^"|"$/g,'')));
       tabName='CSV';
@@ -617,346 +510,84 @@ async function handleARR(file){
     if(!resp.ok) throw new Error(data.error||'API error');
     if(data.validatedARR){
       $('validatedARR').value=data.validatedARR;
-      const sym=data.currency==='GBP'?'\u00a3':data.currency==='EUR'?'\u20ac':'$';
-      let lbl='\u2713 '+file.name+' \u2014 ARR: '+sym+(data.validatedARR/1e6).toFixed(2)+'M';
-      if(data.breakdown&&data.breakdown.length) lbl+=' ('+data.breakdown.map(b=>b.name+': '+sym+(b.amount/1e6).toFixed(1)+'M').join(', ')+')';
+      if(data.currency) dealCurrency=data.currency;
+      const sym=currSym();
+      let lbl='✓ '+file.name+' — ARR: '+sym+(data.validatedARR/1e6).toFixed(2)+'M';
+      if(data.breakdown&&data.breakdown.length)
+        lbl+=' ('+data.breakdown.map(b=>b.name+': '+sym+(b.amount/1e6).toFixed(1)+'M').join(', ')+')';
       $('arrLbl').textContent=lbl;
+      updateCurrencyUI();
       render();
     }else{
-      $('arrLbl').textContent='\u2713 '+file.name+' \u2014 ARR not found, enter manually';
+      $('arrLbl').textContent='✓ '+file.name+' — ARR not found, enter manually';
     }
-  }catch(e){
-    $('arrLbl').textContent='AI extraction failed: '+e.message;
-  }
+  }catch(e){ $('arrLbl').textContent='AI extraction failed: '+e.message; }
 }
 
+// ── BALANCE SHEET UPLOAD ──────────────────────────────────────────────────────
+function bsDrop(e){ e.preventDefault(); $('bsZone').classList.remove('drag'); handleBS(e.dataTransfer.files[0]); }
 
 async function handleBS(file){
-  if(!file)return;
+  if(!file) return;
   $('bsStatus').innerHTML='<div class="proc"><div class="spinner"></div>Reading file...</div>';
   try{
     const ab=await file.arrayBuffer();
-    let rows=[];
-    let tabName='';
+    let rows=[], tabName='';
     if(file.name.toLowerCase().endsWith('.csv')){
       rows=new TextDecoder().decode(ab).trim().split('\n').map(l=>l.split(',').map(c=>c.trim().replace(/^"|"$/g,'')));
       tabName='CSV';
     }else{
       const wb=XLSX.read(ab,{type:'array'});
-      // Find best tab
       const tab=wb.SheetNames.find(s=>/fin.?68|closing.?balance|balance.?sheet/i.test(s))||
-                wb.SheetNames.find(s=>/balance|financ|closing/i.test(s))||
-                wb.SheetNames[0];
+                wb.SheetNames.find(s=>/balance|financ|closing/i.test(s))||wb.SheetNames[0];
       tabName=tab;
       rows=XLSX.utils.sheet_to_json(wb.Sheets[tab],{header:1,defval:''});
     }
-
     $('bsStatus').innerHTML='<div class="proc"><div class="spinner"></div>Extracting with AI (tab: '+tabName+')...</div>';
+    const resp=await fetch('/api/parse-bs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rows,sheetName:tabName})});
+    const data=await resp.json();
+    if(!resp.ok) throw new Error(data.error||'API error '+resp.status);
 
-    // Send to Claude
-    let parsed=null;
-    try{
-      const resp=await fetch('/api/parse-bs',{
-        method:'POST',
-        headers:{'Content-Type':'application/json'},
-        body:JSON.stringify({rows,sheetName:tabName})
-      });
-      const data=await resp.json();
-      if(!resp.ok) throw new Error(data.error||'API error '+resp.status);
-      parsed=data;
-    }catch(apiErr){
-      $('bsStatus').innerHTML=`<div style="font-size:12px;color:var(--red);background:var(--red-bg);border-radius:8px;padding:10px 14px;margin-top:8px;line-height:1.6">
-        <strong>AI extraction failed</strong><br>${apiErr.message}<br>
-        <span style="color:var(--lbl3);font-size:11px">Check API key in Vercel environment variables.</span>
-      </div>`;
-      return;
-    }
+    // Populate WC fields from Assets/Liabilities
+    const assets=(data.sections||[]).find(s=>s.title==='Assets');
+    const liabs=(data.sections||[]).find(s=>s.title==='Liabilities');
+    const wcAssets=assets?assets.rows.filter(r=>isWCAsset(r.name)).reduce((s,r)=>s+(r.amount||0),0):0;
+    const wcLiabs=liabs?Math.abs(liabs.rows.filter(r=>isWCLiab(r.name)).reduce((s,r)=>s+(r.amount||0),0)):0;
+    if(wcAssets){ $('wcNetAR').value=Math.round(wcAssets); }
+    if(wcLiabs) { $('wcOther').value=Math.round(wcLiabs); }
 
-    // Convert Claude response into bsSections format
-    bsSections=(parsed.sections||[]).map(sec=>({
-      title:sec.title,
-      rows:(sec.rows||[]).map(r=>({
-        name:r.name,
-        fullType:r.name,
-        tb:r.amount||0,
-        assumed:r.amount||0,
-        includeWC:isDefaultWC(r.name, sec.title)
-      }))
-    }));
-
-    // Store DR split from Claude
-    if(parsed.deferredRevenue){
-      window._drSoftware=parsed.deferredRevenue.software||0;
-      window._drServices=parsed.deferredRevenue.services||0;
-    }
+    // Populate DR fields from Claude's split
+    const dr=data.deferredRevenue||{};
+    if(dr.software&&$('softDR'))   $('softDR').value=Math.round(dr.software);
+    if(dr.services&&$('nonSoftDR'))$('nonSoftDR').value=Math.round(dr.services);
 
     $('bsTitle').textContent='✓ '+file.name+' (tab: '+tabName+')';
-    $('bsStatus').innerHTML='';
-    renderBS();
-    feedWCFromBS();
-    render();
-  }catch(e){
-    console.error(e);
-    $('bsStatus').innerHTML='<div style="font-size:12px;color:var(--red);padding:6px 0">Could not read file. Check format.</div>';
-  }
-}
+    $('bsStatus').innerHTML=`<div style="font-size:11px;color:var(--blue);margin-top:8px;font-weight:500">
+      ✓ WC and Deferred Revenue auto-populated — edit below to override</div>`;
 
-function parseBSRows(rows){
-  // ── Detect format: Grouped GL (col 0 = Account Type, col 4 = Balance)
-  //    vs Structured BS (sections like "Assets", "Liabilities")
-  
-  // Skip header/metadata rows — find first data row
-  let dataStart=0;
-  for(let i=0;i<Math.min(8,rows.length);i++){
-    const r=rows[i];
-    if(!r||!r.length)continue;
-    const a=String(r[0]||'').trim().toLowerCase();
-    // Row 4 in FIN_68 is the header row "Account Type, Account Number..."
-    if(/account.?type|account.?no|account.?name/i.test(rows[i].join(' '))){
-      dataStart=i+1; break;
-    }
-    // Structured BS: starts with "Assets"
-    if(/^assets?$/i.test(a)){dataStart=i;break;}
-  }
+    // Show "· from BS" indicator
+    const note=$('bsFeedNote');
+    if(note) note.style.display='inline';
 
-  const dataRows=rows.slice(dataStart).filter(r=>r&&r.length);
-
-  // ── Check if this is a GL trial balance (col 0 = category like "Asset - Bank")
-  const firstDataRow=dataRows.find(r=>String(r[0]||'').includes(' - '));
-  const isGLFormat=firstDataRow&&/^(asset|liability|equity)/i.test(String(firstDataRow[0]||''));
-
-  if(isGLFormat){
-    return parseGLFormat(dataRows);
-  } else {
-    return parseStructuredBS(dataRows);
-  }
-}
-
-function parseGLFormat(rows){
-  // GL format: Account Type | Account No | Account Name | Currency | Balance
-  // Group by Account Type, sum balances
-  const groups={};
-  const order=[];
-
-  // Also track DR split (software vs services) from account names
-  let drSoftware=0, drServices=0;
-
-  rows.forEach(row=>{
-    const acctType=String(row[0]||'').trim();
-    const acctName=String(row[2]||row[1]||'').trim();
-    if(!acctType||acctType==='nan')return;
-    if(/^current year/i.test(acctType))return;
-
-    let bal=parseFloat(String(row[4]||'').replace(/[,$]/g,''));
-    if(isNaN(bal)){
-      for(let i=2;i<row.length;i++){
-        const v=parseFloat(String(row[i]||'').replace(/[,$]/g,''));
-        if(!isNaN(v)&&v!==0){bal=v;break;}
-      }
-    }
-    if(isNaN(bal))return;
-
-    if(!groups[acctType]){
-      groups[acctType]={tb:0};
-      order.push(acctType);
-    }
-    groups[acctType].tb+=bal;
-
-    // Track DR split by account name
-    if(/deferred/i.test(acctType)&&bal!==0){
-      const absVal=Math.abs(bal);
-      if(/expert.?service|professional.?service|implement|consult|training|service$/i.test(acctName)){
-        drServices+=absVal;
-      } else {
-        drSoftware+=absVal;
-      }
-    }
-  });
-
-  // Store DR split globally for feedWCFromBS to use
-  window._drSoftware=Math.round(drSoftware);
-  window._drServices=Math.round(drServices);
-
-  // Now organize into sections
-  const assetRows=[], liabRows=[], equityRows=[], otherRows=[];
-  order.forEach(type=>{
-    const tb=Math.round(groups[type].tb);
-    if(Math.abs(tb)<1)return; // skip near-zero
-    const row={name:type.replace(/^Asset - |^Liability - |^Equity - /i,''),
-                fullType:type, tb, assumed:tb, includeWC:isDefaultWC(type,'auto')};
-    if(/^asset/i.test(type)) assetRows.push(row);
-    else if(/^liability/i.test(type)) liabRows.push(row);
-    else if(/^equity/i.test(type)) equityRows.push(row);
-    else otherRows.push(row);
-  });
-
-  const sections=[];
-  if(assetRows.length) sections.push({title:'Assets',rows:assetRows});
-  if(liabRows.length) sections.push({title:'Liabilities',rows:liabRows});
-  if(equityRows.length) sections.push({title:'Equity & Reserves',rows:equityRows});
-  if(otherRows.length) sections.push({title:'Other',rows:otherRows});
-  return sections;
-}
-
-function parseStructuredBS(rows){
-  // Structured format: section headers like "Assets", "Liabilities" with data rows below
-  const sections=[];
-  let curSection=null;
-  rows.forEach(row=>{
-    if(!row||!row.length)return;
-    const a=String(row[0]||row[1]||'').trim();
-    if(!a||a==='nan')return;
-    if(/^assets?$/i.test(a)){curSection={title:'Assets',rows:[]};sections.push(curSection);return;}
-    if(/^liabilit/i.test(a)){curSection={title:'Liabilities',rows:[]};sections.push(curSection);return;}
-    if(/^equity|^reserves?/i.test(a)){curSection={title:'Equity & Reserves',rows:[]};sections.push(curSection);return;}
-    if(/^total|^check|^grand/i.test(a))return;
-    if(a.length>80)return;
-    let tb=0;
-    for(let i=1;i<row.length;i++){
-      const raw=String(row[i]).replace(/[$,\s]/g,'');
-      const neg=raw.startsWith('(')&&raw.endsWith(')');
-      const num=parseFloat(neg?'-'+raw.slice(1,-1):raw);
-      if(!isNaN(num)&&num!==0){tb=num;break;}
-    }
-    if(!tb&&tb!==0)return;
-    if(curSection) curSection.rows.push({name:a,tb,assumed:tb,includeWC:isDefaultWC(a,curSection.title)});
-  });
-  return sections;
-}
-
-function isDefaultWC(name,section){
-  const n=name.toLowerCase();
-  // For GL format, section='auto' — infer from the full account type name
-  if(section==='auto'||section==='Assets'){
-    if(/receivable|prepaid|other current|bank|cash/.test(n)) return true;
-  }
-  if(section==='auto'||section==='Liabilities'){
-    if(/account payable|accrued|deferred rev|current liab/.test(n)) return true;
-  }
-  // Exclude intercompany, fixed assets, goodwill, equity
-  if(/inter.?group|intra.?group|fixed asset|goodwill|intangible|non.?current|equity/i.test(n)) return false;
-  return false;
-}
-
-function renderBS(){
-  if(!bsSections.length){$('bsContent').innerHTML='';$('bsSummary').innerHTML='';return;}
-
-  let html='';
-  bsSections.forEach((sec,si)=>{
-    if(!sec.rows.length)return;
-    html+=`<div class="bs-section">
-      <div class="bs-sec-hdr">${sec.title}</div>
-      <div class="bs-wrap">
-        <table class="bst">
-          <thead><tr>
-            <th style="width:40%">Account</th>
-            <th style="text-align:right">Trial Balance</th>
-            <th style="text-align:right;width:120px">Assumed</th>
-            <th style="text-align:right;width:110px">Not Assumed</th>
-            <th style="text-align:center;width:80px">In WC</th>
-          </tr></thead>
-          <tbody>`;
-    sec.rows.forEach((row,ri)=>{
-      const notAssumed=row.tb-row.assumed;
-      const wcCls=row.includeWC?'wc-yes':'wc-no';
-      const wcLabel=row.includeWC?'Yes':'No';
-      html+=`<tr>
-        <td>${row.name}</td>
-        <td class="bsn ${row.tb<0?'bsneg':''}">${fmtK(row.tb)}</td>
-        <td class="bsamt"><input type="number" class="bsf ${row.assumed<0?'bsneg':''}" value="${row.assumed}" onchange="updateBS(${si},${ri},'assumed',parseFloat(this.value)||0)"/></td>
-        <td class="bsn ${notAssumed<0?'bsneg':''}" id="bsna-${si}-${ri}">${fmtK(notAssumed)}</td>
-        <td style="text-align:center"><select class="wc-sel ${wcCls}" id="bswc-${si}-${ri}" onchange="updateBS(${si},${ri},'includeWC',this.value==='Yes')">
-          <option ${row.includeWC?'selected':''}>Yes</option>
-          <option ${!row.includeWC?'selected':''}>No</option>
-        </select></td>
-      </tr>`;
-    });
-    // Section total
-    const tbTotal=sec.rows.reduce((s,r)=>s+r.tb,0);
-    const assumedTotal=sec.rows.reduce((s,r)=>s+r.assumed,0);
-    const notAssumedTotal=sec.rows.reduce((s,r)=>s+(r.tb-r.assumed),0);
-    html+=`<tr class="bs-total">
-      <td>Total ${sec.title}</td>
-      <td class="bsn">${fmtK(tbTotal)}</td>
-      <td class="bsn">${fmtK(assumedTotal)}</td>
-      <td class="bsn">${fmtK(notAssumedTotal)}</td>
-      <td></td>
-    </tr>`;
-    html+='</tbody></table></div></div>';
-  });
-
-  $('bsContent').innerHTML=html;
-  renderBSSummary();
-}
-
-function updateBS(si,ri,field,val){
-  bsSections[si].rows[ri][field]=val;
-  // Update Not Assumed cell inline
-  if(field==='assumed'){
-    const row=bsSections[si].rows[ri];
-    const na=$(`bsna-${si}-${ri}`);
-    if(na){na.textContent=fmtK(row.tb-val);na.className='bsn '+(row.tb-val<0?'bsneg':'');}
-  }
-  if(field==='includeWC'){
-    const sel=$(`bswc-${si}-${ri}`);
-    if(sel){sel.className='wc-sel '+(val?'wc-yes':'wc-no');}
-  }
-  renderBSSummary();
-  feedWCFromBS();
-  render();
-}
-
-function renderBSSummary(){
-  const assetSec=bsSections.find(s=>s.title==='Assets');
-  const liabSec=bsSections.find(s=>s.title==='Liabilities');
-  const wcAssets=assetSec?assetSec.rows.filter(r=>r.includeWC).reduce((s,r)=>s+r.assumed,0):0;
-  const wcLiabs=liabSec?Math.abs(liabSec.rows.filter(r=>r.includeWC).reduce((s,r)=>s+r.assumed,0)):0;
-  const wc=wcAssets-wcLiabs;
-  $('bsSummary').innerHTML=`<div class="bs-sum">
-    <div class="bs-sb"><div class="bs-sl">WC Assets (Assumed)</div><div class="bs-sv" style="color:var(--grn)">${fmtK(wcAssets)}</div></div>
-    <div class="bs-sb"><div class="bs-sl">WC Liabilities (Assumed)</div><div class="bs-sv" style="color:var(--red)">${fmtK(wcLiabs)}</div></div>
-    <div class="bs-sb"><div class="bs-sl">Working Capital</div><div class="bs-sv" style="color:${wc>=0?'var(--blue)':'var(--red)'}">${fmtK(wc)}</div></div>
-  </div>`;
-}
-
-function feedWCFromBS(){
-  if(!bsSections.length)return;
-  const assetSec=bsSections.find(s=>s.title==='Assets');
-  const liabSec=bsSections.find(s=>s.title==='Liabilities');
-
-  // WC inputs
-  const wcAssets=assetSec?assetSec.rows.filter(r=>r.includeWC).reduce((s,r)=>s+r.assumed,0):0;
-  const wcLiabs=liabSec?Math.abs(liabSec.rows.filter(r=>r.includeWC).reduce((s,r)=>s+r.assumed,0)):0;
-  if(wcAssets)$('wcNetAR').value=Math.round(wcAssets);
-  if(wcLiabs)$('wcOther').value=Math.round(wcLiabs);
-
-  // Auto-feed Deferred Revenue — use GL-level split if available
-  const hasDRSplit=window._drSoftware||window._drServices;
-  if(hasDRSplit){
-    if(window._drSoftware&&$('softDR'))   $('softDR').value=window._drSoftware;
-    if(window._drServices&&$('nonSoftDR'))$('nonSoftDR').value=window._drServices;
-    // Show note
-    if(!document.getElementById('drFeedNote')){
+    // Add DR note
+    if((dr.software||dr.services)&&!document.getElementById('drFeedNote')){
       const hint=document.createElement('div');
       hint.id='drFeedNote';
-      hint.style.cssText='font-size:11px;color:var(--blue);margin-top:6px;font-weight:500';
-      hint.textContent='✓ Split auto-detected from GL: Software DR vs Services DR — override if needed';
-      const dp=$('drPreview');
-      if(dp&&dp.parentNode)dp.parentNode.insertBefore(hint,dp);
+      hint.style.cssText='font-size:11px;color:var(--blue);margin-bottom:10px;font-weight:500';
+      hint.textContent='✓ Split auto-extracted from Balance Sheet · Software vs Services · override if needed';
+      const drBody=$('body-dr');
+      if(drBody) drBody.insertBefore(hint,drBody.firstChild);
     }
-  } else if(liabSec){
-    // Fallback: find total DR row and put in software field
-    const drRow=liabSec.rows.find(r=>/deferred.?rev/i.test(r.fullType||r.name));
-    if(drRow){
-      const drAmt=Math.abs(drRow.assumed);
-      if(drAmt&&$('softDR')) $('softDR').value=Math.round(drAmt);
-    }
+    render();
+  }catch(err){
+    console.error(err);
+    $('bsStatus').innerHTML=`<div style="font-size:12px;color:var(--red);background:var(--red-bg);border-radius:8px;padding:10px 14px;margin-top:8px;line-height:1.6">
+      <strong>AI extraction failed</strong><br>${err.message}</div>`;
   }
-
-  const note=$('bsFeedNote');
-  if(note)note.style.display='inline';
-  render();
 }
+
+function isWCAsset(name){ return /receivable|prepaid|other.?current|bank|cash/i.test(name) && !/inter.?group|intra|goodwill|fixed|intangible/i.test(name); }
+function isWCLiab(name){  return /payable|accrued|deferred/i.test(name); }
 
 // ── DYNAMIC MODULES ───────────────────────────────────────────────────────────
 function renderDynamic(){
@@ -972,7 +603,7 @@ function renderDynamic(){
       <div class="cb op" id="body-${m.id}">
         <div style="font-size:11px;color:var(--lbl3);margin-bottom:12px">${m.loiNote||''}</div>
         <div class="g2">
-          <div class="fg"><div class="fl">${m.amtLabel}</div><div class="ir"><span class="px2">$</span><input type="number" class="f" id="${m.amtId}" placeholder="0" oninput="render()"/></div></div>
+          <div class="fg"><div class="fl">${m.amtLabel}</div><div class="ir"><span class="px2">${currSym()}</span><input type="number" class="f" id="${m.amtId}" placeholder="0" oninput="render()"/></div></div>
           <div class="fg"><div class="fl">${m.pctLabel}</div><div class="psr"><input type="number" class="pf" id="${m.pctId}" value="${m.pctDefault}" step="0.1" oninput="render()"/><span class="pss">%</span></div></div>
         </div>
         <div id="${m.id}Prev"></div>
@@ -980,10 +611,10 @@ function renderDynamic(){
     </div>`).join('');
 }
 
-// ── CUSTOM ────────────────────────────────────────────────────────────────────
-function addCustom(){customAdjs.push({id:++customId,name:'',value:'',dir:'deduct'});renderCustom();render();}
-function removeCustom(id){customAdjs=customAdjs.filter(c=>c.id!==id);renderCustom();render();}
-function updateCustom(id,f,v){const c=customAdjs.find(x=>x.id===id);if(c)c[f]=v;render();}
+// ── CUSTOM ADJUSTMENTS ────────────────────────────────────────────────────────
+function addCustom(){ customAdjs.push({id:++customId,name:'',value:'',dir:'deduct'}); renderCustom(); render(); }
+function removeCustom(id){ customAdjs=customAdjs.filter(c=>c.id!==id); renderCustom(); render(); }
+function updateCustom(id,f,v){ const c=customAdjs.find(x=>x.id===id); if(c)c[f]=v; render(); }
 function renderCustom(){
   $('customList').innerHTML=customAdjs.map(c=>`
     <div class="adj-row">
@@ -999,7 +630,7 @@ function renderCustom(){
 
 // ── RIGHT PANEL ───────────────────────────────────────────────────────────────
 function buildRight(){
-  return`<div class="slbl">Purchase Price Waterfall</div>
+  return `<div class="slbl">Purchase Price Waterfall</div>
   <div class="wfc">
     <div style="margin-bottom:10px">
       <div style="font-size:15px;font-weight:700;color:var(--blue);font-family:'Playfair Display',serif" id="wfName">—</div>
@@ -1013,79 +644,76 @@ function buildRight(){
   </div>`;
 }
 
-// ── CURRENCY SYMBOL ───────────────────────────────────────────────────────────
-function currSym(){
-  if(dealCurrency==='GBP') return '£';
-  if(dealCurrency==='EUR') return '€';
-  if(dealCurrency==='AUD') return 'A$';
-  if(dealCurrency==='CAD') return 'C$';
-  return '$';
-}
-function updateCurrencyUI(){
-  const sym=currSym();
-  document.querySelectorAll('.px2').forEach(el=>{el.textContent=sym;});
-}
-
-// ── RENDER ────────────────────────────────────────────────────────────────────
+// ── MAIN RENDER ───────────────────────────────────────────────────────────────
 function render(){
-  if(!$('wfRows'))return;
+  if(!$('wfRows')) return;
   updateCurrencyUI();
-  const basePP=n('basePP'),arr=n('validatedARR');
-  const wcCapPct=n('wcCapPct')||5,drThreshPct=n('drThreshPct')||50;
-  const wcCap=arr*(wcCapPct/100),drThresh=arr*(drThreshPct/100);
 
-  const wl=$('wcCapLabel'),dl=$('drThreshLabel');
-  if(wl)wl.textContent=wcCapPct+'%';if(dl)dl.textContent=drThreshPct+'%';
+  const basePP=n('basePP'), arr=n('validatedARR');
+  const wcCapPct=n('wcCapPct')||5, drThreshPct=n('drThreshPct')||50;
+  const wcCap=arr*(wcCapPct/100), drThresh=arr*(drThreshPct/100);
 
-  const netAR=n('wcNetAR'),empTerm=n('wcEmpTerm'),leaseObl=n('wcLease'),otherLiab=n('wcOther');
+  // Update inline labels
+  const wcLbl=$('wcCapLabel'), drLbl=$('drThreshLabel');
+  if(wcLbl) wcLbl.textContent=wcCapPct+'%';
+  if(drLbl) drLbl.textContent=drThreshPct+'%';
+
+  // Working Capital
+  const netAR=n('wcNetAR'), empTerm=n('wcEmpTerm'), leaseObl=n('wcLease'), otherLiab=n('wcOther');
   const wcEn=chk('wcEnabled');
   const tangWC=netAR-empTerm-leaseObl-otherLiab;
   const wcAdj=wcEn?(tangWC>0?Math.min(tangWC,wcCap):tangWC):0;
   const wcCapped=wcEn&&tangWC>0&&tangWC>wcCap;
   const wcHas=netAR||empTerm||leaseObl||otherLiab;
 
-  const softDR=n('softDR'),nonSoftDR=n('nonSoftDR'),drEn=chk('drEnabled');
+  // Deferred Revenue
+  const softDR=n('softDR'), nonSoftDR=n('nonSoftDR'), drEn=chk('drEnabled');
   const softExcess=Math.max(0,softDR-drThresh);
   const drAdj=drEn?-(softExcess+nonSoftDR):0;
   const drHas=softDR||nonSoftDR;
 
+  // Dynamic modules
   let dynTotal=0;
   dynamicMods.forEach(m=>{
-    const en=chk(m.id+'En'),amt=n(m.amtId),p=n(m.pctId);
-    const adj=en?-(amt*(p/100)):0;dynTotal+=adj;
-    const b=$('badge-'+m.id);if(b){b.textContent=amt?fmtK(adj):'Not entered';b.className='badge '+(adj<0?'br2':amt?'bg2':'bk2');}
-    const pv=$(m.id+'Prev');
-    if(pv)pv.innerHTML=amt?`<div class="cbox"><div class="crow"><span>${m.amtLabel}</span><span>${fmtK(amt)}</span></div><div class="crow"><span>Rate</span><span>${p}%</span></div><div class="ctot"><span>Adjustment</span><span style="color:var(--red)">${fmtK(adj)}</span></div></div>`:'';
+    const en=chk(m.id+'En'), amt=n(m.amtId), pv=n(m.pctId);
+    const adj=en?-(amt*(pv/100)):0; dynTotal+=adj;
+    const b=$('badge-'+m.id); if(b){ b.textContent=amt?fmtK(adj):'Not entered'; b.className='badge '+(adj<0?'br2':amt?'bg2':'bk2'); }
+    const prev=$(m.id+'Prev');
+    if(prev) prev.innerHTML=amt?`<div class="cbox"><div class="crow"><span>${m.amtLabel}</span><span>${fmtK(amt)}</span></div><div class="crow"><span>Rate</span><span>${pv}%</span></div><div class="ctot"><span>Adjustment</span><span style="color:var(--red)">${fmtK(adj)}</span></div></div>`:'';
   });
 
+  // Custom
   let custTotal=0;
-  customAdjs.forEach(c=>{const v=parseFloat(c.value)||0;custTotal+=c.dir==='add'?v:-v;});
-  const netPP=basePP+wcAdj+drAdj+dynTotal+custTotal,delta=netPP-basePP;
+  customAdjs.forEach(c=>{ const v=parseFloat(c.value)||0; custTotal+=c.dir==='add'?v:-v; });
 
-  // Derived
+  const netPP=basePP+wcAdj+drAdj+dynTotal+custTotal, delta=netPP-basePP;
+
+  // Derived row
   const dr=$('derivedRow');
-  if(dr&&arr>0)dr.innerHTML=`<div style="display:flex;gap:14px;flex-wrap:wrap">
+  if(dr&&arr>0) dr.innerHTML=`<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:4px">
     <span style="font-size:11px;color:var(--lbl3)">WC cap <strong style="color:var(--blue)">${fmtK(wcCap)}</strong></span>
     <span style="font-size:11px;color:var(--lbl3)">DR threshold <strong style="color:var(--blue)">${fmtK(drThresh)}</strong></span>
     ${basePP>0?`<span style="font-size:11px;color:var(--lbl3)">EV/ARR <strong style="color:var(--blue)">${(basePP/arr).toFixed(2)}x</strong></span>`:''}
   </div>`;
 
-  function bd(id,txt,cls){const b=$(id);if(b){b.textContent=txt;b.className='badge '+cls;}}
-  bd('badge-wc',wcEn&&wcHas?(wcAdj>=0?'+':'')+fmtK(wcAdj):'Not entered',wcEn&&wcHas?(wcAdj>=0?'bg2':'br2'):'bk2');
-  bd('badge-dr',drEn&&drHas?fmtK(drAdj):'Not entered',drEn&&drHas&&drAdj<0?'br2':drEn&&drHas?'bg2':'bk2');
-  const cc=customAdjs.length;
-  bd('badge-custom',cc>0?`${cc} · ${custTotal>=0?'+':''}${fmtK(custTotal)}`:'None',custTotal>0?'bg2':custTotal<0?'br2':'bk2');
+  // Badges
+  function bd(id,txt,cls){ const b=$(id); if(b){ b.textContent=txt; b.className='badge '+cls; } }
+  bd('badge-wc', wcEn&&wcHas?(wcAdj>=0?'+':'')+fmtK(wcAdj):'Not entered', wcEn&&wcHas?(wcAdj>=0?'bg2':'br2'):'bk2');
+  bd('badge-dr', drEn&&drHas?fmtK(drAdj):'Not entered', drEn&&drHas&&drAdj<0?'br2':drEn&&drHas?'bg2':'bk2');
+  bd('badge-custom', customAdjs.length>0?`${customAdjs.length} · ${custTotal>=0?'+':''}${fmtK(custTotal)}`:'None', custTotal>0?'bg2':custTotal<0?'br2':'bk2');
 
+  // WC Preview
   const wp=$('wcPreview');
-  if(wp)wp.innerHTML=wcHas?`<div class="cbox">
-    <div class="crow"><span>Net AR / WC Assets</span><span style="color:var(--grn)">+${fmtK(netAR)}</span></div>
+  if(wp) wp.innerHTML=wcHas?`<div class="cbox">
+    <div class="crow"><span>Net AR / Current Assets</span><span style="color:var(--grn)">+${fmtK(netAR)}</span></div>
     <div class="crow"><span>Assumed liabilities</span><span style="color:var(--red)">−${fmtK(empTerm+leaseObl+otherLiab)}</span></div>
     <div class="ctot"><span>Tangible WC</span><span style="color:${tangWC>=0?'var(--grn)':'var(--red)'}">${fmtK(tangWC)}</span></div>
-    ${wcCapped?`<div class="cwarn">⚠ Capped at ${fmtK(wcCap)} (${wcCapPct}% of ARR) · Excess ${fmtK(tangWC-wcCap)} not applied</div>`:''}
+    ${wcCapped?`<div class="cwarn">⚠ Capped at ${fmtK(wcCap)} (${wcCapPct}% of ARR) · Uncapped excess: ${fmtK(tangWC-wcCap)}</div>`:''}
   </div>`:'';
 
+  // DR Preview
   const dp=$('drPreview');
-  if(dp)dp.innerHTML=drHas?`<div class="cbox">
+  if(dp) dp.innerHTML=drHas?`<div class="cbox">
     <div class="crow"><span>Software DR</span><span>${fmtK(softDR)}</span></div>
     <div class="crow"><span>${drThreshPct}% ARR threshold</span><span>${fmtK(drThresh)}</span></div>
     <div class="crow"><span>SW excess deducted</span><span style="color:var(--red)">−${fmtK(softExcess)}</span></div>
@@ -1093,35 +721,36 @@ function render(){
     <div class="ctot"><span>Total DR Adjustment</span><span style="color:${drAdj<0?'var(--red)':'var(--lbl)'}">${fmtK(drAdj)}</span></div>
   </div>`:'';
 
-  const empHB=n('empHoldback'),leaseHB=n('leaseHoldback'),totalHB=empHB+leaseHB;
+  // Holdback
+  const empHB=n('empHoldback'), leaseHB=n('leaseHoldback'), totalHB=empHB+leaseHB;
   const hn=$('hbNote');
-  if(hn)hn.innerHTML=totalHB>0?`<div style="font-size:11px;color:var(--gld);margin-top:6px">Tracked: <strong>${fmtK(totalHB)}</strong> — returned to seller if unspent at 6-month anniversary</div>`:'';
+  if(hn) hn.innerHTML=totalHB>0?`<div style="font-size:11px;color:var(--gld);margin-top:6px">Tracked: <strong>${fmtK(totalHB)}</strong> — returned to seller if unspent at 6-month anniversary</div>`:'';
 
-  // WATERFALL
+  // Waterfall
   $('wfName').textContent=vv('dealName')||'Deal Name';
   $('wfSub').textContent=`Buyer: ${vv('buyerName')||'—'} · ${new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}`;
 
   function wfr(lbl,val,sub,cls){
-    if(val===null)return`<div class="wfr"><div><div class="wfl" style="color:var(--lbl3)">${lbl}</div>${sub?`<div class="wfs">${sub}</div>`:''}</div><div class="wfv vd">—</div></div>`;
+    if(val===null||val===undefined) return `<div class="wfr"><div><div class="wfl" style="color:var(--lbl3)">${lbl}</div>${sub?`<div class="wfs">${sub}</div>`:''}</div><div class="wfv vd">—</div></div>`;
     const vc=cls||(val>0?'vp':val<0?'vn':'');
-    return`<div class="wfr"><div><div class="wfl">${lbl}</div>${sub?`<div class="wfs">${sub}</div>`:''}</div><div class="wfv ${vc}">${cls?fmtK(val):(val>0?'+':'')+fmtK(val)}</div></div>`;
+    const disp=cls?fmtK(val):(val>0?'+':'')+fmtK(val);
+    return `<div class="wfr"><div><div class="wfl">${lbl}</div>${sub?`<div class="wfs">${sub}</div>`:''}</div><div class="wfv ${vc}">${disp}</div></div>`;
   }
 
-  let rows=wfr('Base Purchase Price',basePP,basePP>0?fmtM(basePP):undefined,'vb');
-  rows+='<div class="wfsep"></div>';
-  rows+=wfr('Working Capital',wcEn?wcAdj:null,wcEn?(wcCapped?`Capped (raw ${fmtK(tangWC)})`:wcHas?`Tangible WC: ${fmtK(tangWC)}`:'Enter inputs'):'Disabled');
-  rows+=wfr('Deferred Revenue',drEn?drAdj:null,drEn?(drHas?`SW excess ${fmtK(softExcess)} · Non-SW ${fmtK(nonSoftDR)}`:'Enter inputs'):'Disabled');
+  let rows = wfr('Base Purchase Price', basePP, basePP>0?fmtM(basePP):undefined, 'vb');
+  rows += '<div class="wfsep"></div>';
+  rows += wfr('Working Capital', wcEn?wcAdj:null, wcEn?(wcCapped?`Capped (raw ${fmtK(tangWC)})`:wcHas?`Tangible WC: ${fmtK(tangWC)}`:'Enter inputs'):'Disabled');
+  rows += wfr('Deferred Revenue', drEn?drAdj:null, drEn?(drHas?`SW excess ${fmtK(softExcess)} · Non-SW ${fmtK(nonSoftDR)}`:'Enter inputs'):'Disabled');
   dynamicMods.forEach(m=>{
-    const en=chk(m.id+'En'),amt=n(m.amtId),p=n(m.pctId),adj=en?-(amt*(p/100)):0;
-    rows+=wfr(m.title,en?adj:null,en&&amt?`${fmtK(amt)} × ${p}%`:'Enter inputs');
+    const en=chk(m.id+'En'), amt=n(m.amtId), pv=n(m.pctId), adj=en?-(amt*(pv/100)):0;
+    rows+=wfr(m.title, en?adj:null, en&&amt?`${fmtK(amt)} × ${pv}%`:'Enter inputs');
   });
-  customAdjs.forEach(c=>{
-    const v=parseFloat(c.value)||0,adj=c.dir==='add'?v:-v;
-    rows+=wfr(c.name||'Custom adjustment',c.value?adj:null,'');
-  });
-  rows+='<div class="wfsep"></div>';
+  customAdjs.forEach(c=>{ const v=parseFloat(c.value)||0; rows+=wfr(c.name||'Custom adjustment', c.value?(c.dir==='add'?v:-v):null, ''); });
+  rows += '<div class="wfsep"></div>';
   $('wfRows').innerHTML=rows;
 
+  // Net PP box
+  const sym=currSym();
   $('netBox').innerHTML=basePP>0?`<div class="nbox">
     <div><div class="nlbl">Net Purchase Price</div><div class="nval">${fmtM(netPP)}</div></div>
     <div style="text-align:right">
@@ -1131,13 +760,14 @@ function render(){
   </div>`:
   `<div class="nbox"><div><div class="nlbl">Net Purchase Price</div><div style="font-size:16px;font-weight:600;color:rgba(255,255,255,.3)">Enter base PP →</div></div></div>`;
 
+  // Holdback card
   const hbc=$('hbCard');
   if(hbc){
     if(loiHasHoldback&&totalHB>0){
       hbc.style.display='block';
       $('hbRows').innerHTML=
-        wfr('Employee Termination',empHB||null,'Returned if unspent at 6mo')+
-        wfr('Facility Lease',leaseHB||null,'Returned if unspent at 6mo')+
+        wfr('Employee Termination', empHB||null, 'Returned if unspent at 6mo')+
+        wfr('Facility Lease', leaseHB||null, 'Returned if unspent at 6mo')+
         '<div class="wfsep"></div>'+
         `<div class="wfr"><div class="wfl" style="font-weight:700">Total Holdback</div><div class="wfv" style="color:var(--gld);font-weight:700">${fmtK(totalHB)}</div></div>`;
     }else hbc.style.display='none';
@@ -1146,16 +776,19 @@ function render(){
 
 // ── RESET ─────────────────────────────────────────────────────────────────────
 function resetAll(){
-  ['dealName','buyerName'].forEach(id=>$(id)&&($(id).value=''));
-  ['basePP','validatedARR','wcNetAR','wcEmpTerm','wcLease','wcOther','softDR','nonSoftDR','empHoldback','leaseHoldback'].forEach(id=>{if($(id))$(id).value='';});
-  $('wcCapPct').value='5';$('drThreshPct').value='50';
-  ['wcEnabled','drEnabled'].forEach(id=>{if($(id))$(id).checked=true;});
-  $('loiStatus').innerHTML='';$('uzTitle').textContent='Upload LOI (PDF or TXT)';
-  $('bsStatus').innerHTML='';$('bsContent').innerHTML='';$('bsSummary').innerHTML='';
-  $('bsTitle').textContent='Upload Balance Sheet (XLSX / CSV)';
+  ['dealName','buyerName'].forEach(id=>{ if($(id)) $(id).value=''; });
+  ['basePP','validatedARR','wcNetAR','wcEmpTerm','wcLease','wcOther',
+   'softDR','nonSoftDR','empHoldback','leaseHoldback'].forEach(id=>{ if($(id)) $(id).value=''; });
+  $('wcCapPct').value='5'; $('drThreshPct').value='50';
+  ['wcEnabled','drEnabled'].forEach(id=>{ if($(id)) $(id).checked=true; });
+  $('loiStatus').innerHTML=''; $('uzTitle').textContent='Upload LOI (PDF or TXT)';
+  if($('bsStatus')) $('bsStatus').innerHTML='';
+  if($('bsTitle'))  $('bsTitle').textContent='Upload Balance Sheet (XLSX / CSV)';
   $('arrLbl').textContent='Upload ARR Report';
-  bsSections=[];customAdjs=[];customId=0;dynamicMods=[];loiHasHoldback=false;
-  renderCustom();renderDynamic();
+  const drn=document.getElementById('drFeedNote'); if(drn) drn.remove();
+  bsSections=[]; customAdjs=[]; customId=0; dynamicMods=[];
+  loiHasHoldback=false; dealCurrency='USD';
+  renderCustom(); renderDynamic();
   $('holdbackSection').style.display='none';
   $('mainContent').style.display='none';
   $('rightPanel').innerHTML=`<div class="empty"><div class="ei">📋</div><div class="et">Upload an LOI to begin</div><div class="es">Or skip to enter manually</div></div>`;
