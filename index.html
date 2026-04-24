@@ -1,0 +1,640 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PPA Calculator — Trilogy</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet" />
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  :root{
+    --bg:#0d1117;--surface:#161b22;--elevated:#1c2230;--card:#21262d;
+    --border:#30363d;--border-sub:#21262d;
+    --text:#e6edf3;--text2:#8b949e;--muted:#484f58;
+    --gold:#d4a843;--gold-dim:rgba(212,168,67,.12);
+    --green:#3fb950;--green-dim:rgba(63,185,80,.12);
+    --red:#f85149;--red-dim:rgba(248,81,73,.12);
+    --blue:#58a6ff;--blue-dim:rgba(88,166,255,.1);
+  }
+  body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh}
+  input[type=number]{-moz-appearance:textfield}
+  input[type=number]::-webkit-inner-spin-button,input[type=number]::-webkit-outer-spin-button{-webkit-appearance:none}
+  ::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--bg)}::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+  header{background:var(--surface);border-bottom:1px solid var(--border);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+  .logo{width:32px;height:32px;background:var(--gold-dim);border:1px solid var(--gold);border-radius:6px;display:flex;align-items:center;justify-content:center;font-family:'DM Serif Display',serif;color:var(--gold);font-size:15px;flex-shrink:0}
+  .header-title{font-family:'DM Serif Display',serif;font-size:16px}
+  .header-sub{font-size:11px;color:var(--muted);margin-top:1px}
+  .reset-btn{font-size:12px;color:var(--muted);background:none;border:1px solid var(--border);border-radius:5px;padding:5px 10px;cursor:pointer}
+  .reset-btn:hover{color:var(--text2);border-color:var(--text2)}
+
+  .layout{display:flex;height:calc(100vh - 57px)}
+  .left-panel{width:60%;padding:22px 26px;overflow-y:auto;border-right:1px solid var(--border)}
+  .right-panel{width:40%;padding:22px 22px;overflow-y:auto;position:sticky;top:57px;height:calc(100vh - 57px)}
+
+  .section-label{font-size:10px;font-family:'DM Mono',monospace;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);font-weight:500;margin-bottom:10px}
+  .core-box{background:var(--elevated);border:1px solid var(--border);border-radius:8px;padding:16px;margin-bottom:20px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+  .grid2-full{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+
+  label.field-label{font-size:12px;color:var(--text2);display:block;margin-bottom:5px}
+  .input-wrap{display:flex;align-items:center;gap:6px}
+  .prefix{font-family:'DM Mono',monospace;font-size:13px;color:var(--muted)}
+  input.field{background:var(--elevated);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:'DM Mono',monospace;font-size:13px;padding:7px 10px;width:100%;outline:none;transition:border-color .15s}
+  input.field:focus{border-color:var(--gold)}
+  input.field::placeholder{color:var(--muted)}
+  input.text-field{background:var(--elevated);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:'DM Sans',sans-serif;font-size:13px;padding:7px 10px;width:100%;outline:none}
+  input.text-field:focus{border-color:var(--gold)}
+
+  .derived-row{display:flex;gap:16px;margin-top:12px;padding-top:12px;border-top:1px solid var(--border-sub)}
+  .derived-item{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace}
+  .derived-item span{color:var(--gold)}
+
+  /* Module cards */
+  .module{background:var(--card);border:1px solid var(--border);border-radius:8px;margin-bottom:10px;transition:border-color .2s}
+  .module.active{border-color:var(--gold)}
+  .module-header{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;cursor:pointer;user-select:none}
+  .module-left{display:flex;align-items:center;gap:10px}
+  .module-title{font-size:13px;font-weight:500;color:var(--text)}
+  .module.inactive .module-title{color:var(--muted)}
+  .module-body{padding:0 16px 16px;border-top:1px solid var(--border-sub);padding-top:14px;display:none}
+  .module-body.open{display:block}
+  .chevron{color:var(--muted);font-size:11px;transition:transform .2s}
+  .chevron.open{transform:rotate(180deg)}
+
+  /* Toggle */
+  .toggle{position:relative;width:38px;height:20px;flex-shrink:0}
+  .toggle input{opacity:0;width:0;height:0;position:absolute}
+  .toggle-slider{position:absolute;top:0;left:0;right:0;bottom:0;background:var(--elevated);border:1px solid var(--border);border-radius:20px;cursor:pointer;transition:.2s}
+  .toggle-slider:before{content:'';position:absolute;width:12px;height:12px;left:3px;bottom:3px;background:var(--muted);border-radius:50%;transition:.2s}
+  .toggle input:checked+.toggle-slider{background:var(--gold-dim);border-color:var(--gold)}
+  .toggle input:checked+.toggle-slider:before{transform:translateX(18px);background:var(--gold)}
+
+  /* Badge */
+  .badge{font-size:10px;font-family:'DM Mono',monospace;letter-spacing:.04em;padding:2px 7px;border-radius:4px;font-weight:500;white-space:nowrap}
+  .badge-green{background:var(--green-dim);color:var(--green)}
+  .badge-red{background:var(--red-dim);color:var(--red)}
+  .badge-gold{background:var(--gold-dim);color:var(--gold)}
+  .badge-blue{background:var(--blue-dim);color:var(--blue)}
+
+  /* Calc preview box */
+  .calc-preview{background:var(--elevated);border-radius:6px;padding:10px 13px;margin-top:10px;font-family:'DM Mono',monospace;font-size:12px}
+  .calc-row{display:flex;justify-content:space-between;margin-bottom:5px;color:var(--text2)}
+  .calc-total{display:flex;justify-content:space-between;padding-top:8px;border-top:1px solid var(--border);font-weight:600;color:var(--text)}
+  .cap-warning{display:flex;align-items:center;gap:5px;margin-top:8px;font-size:11px;color:var(--gold)}
+
+  /* Field row */
+  .field-row{margin-bottom:12px}
+
+  /* Hint */
+  .hint{font-size:10px;color:var(--muted);margin-top:3px;font-family:'DM Mono',monospace;line-height:1.5}
+
+  /* Custom adj */
+  .custom-row{display:flex;gap:6px;margin-bottom:7px;align-items:flex-start}
+  .custom-row input.field{font-size:12px}
+  select.field{background:var(--elevated);border:1px solid var(--border);border-radius:5px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;padding:7px 8px;outline:none;cursor:pointer;width:100%}
+  .del-btn{background:var(--red-dim);border:1px solid var(--red);border-radius:5px;padding:7px 8px;cursor:pointer;color:var(--red);flex-shrink:0;font-size:12px}
+  .add-btn{font-size:12px;color:var(--blue);background:var(--blue-dim);border:1px solid rgba(88,166,255,.2);border-radius:5px;padding:6px 12px;cursor:pointer;margin-top:4px}
+
+  /* Waterfall */
+  .deal-header{background:var(--elevated);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:14px}
+  .deal-name{font-family:'DM Serif Display',serif;font-size:18px;color:var(--text);margin-bottom:2px}
+  .deal-sub{font-size:11px;color:var(--muted)}
+
+  .wf-card{background:var(--card);border:1px solid var(--border);border-radius:8px;padding:14px 18px;margin-bottom:14px}
+  .wf-row{display:flex;justify-content:space-between;align-items:flex-start;padding:9px 0;border-bottom:1px solid var(--border-sub)}
+  .wf-row:last-child{border-bottom:none}
+  .wf-label{font-size:12px;color:var(--text2)}
+  .wf-sub{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px}
+  .wf-val{font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);text-align:right}
+  .wf-val.pos{color:var(--green)}
+  .wf-val.neg{color:var(--red)}
+  .wf-val.gold{color:var(--gold)}
+  .wf-val.dim{color:var(--muted)}
+  .wf-divider{height:1px;background:var(--border);margin:4px 0}
+
+  .net-box{background:var(--gold-dim);border:1px solid rgba(212,168,67,.3);border-radius:6px;padding:13px 15px;margin-top:10px;display:flex;justify-content:space-between;align-items:center}
+  .net-label{font-size:10px;color:var(--gold);font-family:'DM Mono',monospace;letter-spacing:.08em;text-transform:uppercase;margin-bottom:5px}
+  .net-value{font-family:'DM Serif Display',serif;font-size:28px;color:var(--text)}
+  .net-delta{text-align:right}
+  .net-delta-val{font-family:'DM Mono',monospace;font-size:13px;font-weight:600}
+  .net-delta-pct{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;margin-top:2px}
+
+  .metrics-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .metric-box{background:var(--elevated);border-radius:6px;padding:10px 12px}
+  .metric-label{font-size:10px;color:var(--muted);font-family:'DM Mono',monospace;text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+  .metric-value{font-family:'DM Mono',monospace;font-size:15px;font-weight:600;color:var(--text)}
+
+  @media(max-width:900px){
+    .layout{flex-direction:column;height:auto}
+    .left-panel,.right-panel{width:100%;position:static;height:auto}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div style="display:flex;align-items:center;gap:12px">
+    <div class="logo">T</div>
+    <div>
+      <div class="header-title">Purchase Price Adjustment Calculator</div>
+      <div class="header-sub">Trilogy Acquisitions · v1.0</div>
+    </div>
+  </div>
+  <button class="reset-btn" onclick="resetAll()">↺ Reset</button>
+</header>
+
+<div class="layout">
+  <!-- LEFT PANEL -->
+  <div class="left-panel">
+
+    <!-- Deal Info -->
+    <div style="margin-bottom:18px">
+      <div class="section-label">Deal Information</div>
+      <div class="grid2">
+        <div>
+          <label class="field-label">Deal / Target</label>
+          <input class="text-field" id="dealName" value="Quark / PCF Number 5" oninput="render()" />
+        </div>
+        <div>
+          <label class="field-label">Buyer</label>
+          <input class="text-field" id="buyerName" value="Zax Capital" oninput="render()" />
+        </div>
+      </div>
+    </div>
+
+    <!-- Core Inputs -->
+    <div class="core-box" style="margin-bottom:20px">
+      <div class="section-label">Core Inputs</div>
+      <div class="grid2">
+        <div class="field-row">
+          <label class="field-label">Base Purchase Price (LOI)</label>
+          <div class="input-wrap"><span class="prefix">$</span><input type="number" class="field" id="basePP" value="9000000" oninput="render()" /></div>
+        </div>
+        <div class="field-row">
+          <label class="field-label">Validated In-Force ARR</label>
+          <div class="input-wrap"><span class="prefix">$</span><input type="number" class="field" id="validatedARR" value="11500000" oninput="render()" /></div>
+        </div>
+      </div>
+      <div class="derived-row" id="derivedRow"></div>
+    </div>
+
+    <!-- Section label -->
+    <div class="section-label">Closing Adjustments</div>
+
+    <!-- MODULE 1: Working Capital -->
+    <div class="module active" id="mod-wc">
+      <div class="module-header" onclick="toggleModule('wc')">
+        <div class="module-left">
+          <label class="toggle" onclick="event.stopPropagation()">
+            <input type="checkbox" id="wcEnabled" checked onchange="render()" />
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="module-title">Working Capital Adjustment</span>
+          <span class="badge badge-blue" id="badge-wc">Not entered</span>
+        </div>
+        <span class="chevron open" id="chev-wc">▾</span>
+      </div>
+      <div class="module-body open" id="body-wc">
+        <div class="hint" style="margin-bottom:12px">LOI §4a · Tangible WC = Net AR − Employee Termination − Lease Obligations − Other Liabilities<br>Increases capped at 5% of Validated ARR</div>
+        <div class="grid2">
+          <div class="field-row">
+            <label class="field-label">Net Accounts Receivable</label>
+            <div class="input-wrap"><span class="prefix">$</span><input type="number" class="field" id="wcNetAR" placeholder="0" oninput="render()" /></div>
+          </div>
+          <div class="field-row">
+            <label class="field-label">Employee Termination Costs</label>
+            <div class="input-wrap"><span class="prefix">$</span><input type="number" class="field" id="wcEmpTerm" placeholder="0" oninput="render()" /></div>
+          </div>
+          <div class="field-row">
+            <label class="field-label">Ongoing Lease Obligations</label>
+            <div class="input-wrap"><span class="prefix">$</span><input type="number" class="field" id="wcLease" placeholder="0" oninput="render()" /></div>
+          </div>
+          <div class="field-row">
+            <label class="field-label">Other Cash Liabilities</label>
+            <div class="input-wrap"><span class="prefix">$</span><input type="number" class="field" id="wcOther" placeholder="0" oninput="render()" /></div>
+          </div>
+        </div>
+        <div id="wcPreview"></div>
+      </div>
+    </div>
+
+    <!-- MODULE 2: Deferred Revenue -->
+    <div class="module active" id="mod-dr">
+      <div class="module-header" onclick="toggleModule('dr')">
+        <div class="module-left">
+          <label class="toggle" onclick="event.stopPropagation()">
+            <input type="checkbox" id="drEnabled" checked onchange="render()" />
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="module-title">Deferred Revenue Adjustment</span>
+          <span class="badge badge-blue" id="badge-dr">Not entered</span>
+        </div>
+        <span class="chevron" id="chev-dr">▾</span>
+      </div>
+      <div class="module-body" id="body-dr">
+        <div class="hint" style="margin-bottom:12px">LOI §4b · Deduct: (Software DR exceeding 50% of ARR) + 100% of Non-Software DR</div>
+        <div class="grid2">
+          <div class="field-row">
+            <label class="field-label">Software Deferred Revenue</label>
+            <div class="input-wrap"><span class="prefix">$</span><input type="number" class="field" id="softDR" placeholder="0" oninput="render()" /></div>
+          </div>
+          <div class="field-row">
+            <label class="field-label">Non-Software Deferred Revenue</label>
+            <div class="input-wrap"><span class="prefix">$</span><input type="number" class="field" id="nonSoftDR" placeholder="0" oninput="render()" /></div>
+          </div>
+        </div>
+        <div id="drPreview"></div>
+      </div>
+    </div>
+
+    <!-- MODULE 3: Quark India -->
+    <div class="module active" id="mod-qi">
+      <div class="module-header" onclick="toggleModule('qi')">
+        <div class="module-left">
+          <label class="toggle" onclick="event.stopPropagation()">
+            <input type="checkbox" id="qiEnabled" checked onchange="render()" />
+            <span class="toggle-slider"></span>
+          </label>
+          <span class="module-title">Quark India Reserve Adjustment</span>
+          <span class="badge badge-blue" id="badge-qi">Not entered</span>
+        </div>
+        <span class="chevron" id="chev-qi">▾</span>
+      </div>
+      <div class="module-body" id="body-qi">
+        <div class="hint" style="margin-bottom:12px">LOI §4c · Deduct 18% of Quark India Reserve & Surplus balance at Closing</div>
+        <div class="field-row" style="max-width:280px">
+          <label class="field-label">Reserve & Surplus Balance</label>
+          <div class="input-wrap"><span class="prefix">$</span><input type="number" class="field" id="qiReserve" placeholder="0" oninput="render()" /></div>
+        </div>
+        <div id="qiPreview"></div>
+      </div>
+    </div>
+
+    <!-- MODULE 4: Custom -->
+    <div class="module" id="mod-custom">
+      <div class="module-header" onclick="toggleModule('custom')">
+        <div class="module-left">
+          <span class="module-title">Custom Adjustments</span>
+          <span class="badge badge-blue" id="badge-custom">None</span>
+        </div>
+        <span class="chevron" id="chev-custom">▾</span>
+      </div>
+      <div class="module-body" id="body-custom">
+        <div class="hint" style="margin-bottom:12px">Add any deal-specific adjustments not covered above</div>
+        <div id="customList"></div>
+        <button class="add-btn" onclick="addCustom()">+ Add adjustment</button>
+      </div>
+    </div>
+
+    <!-- Holdbacks -->
+    <div style="margin-top:16px">
+      <div class="section-label">Holdback Information (not a direct price reduction)</div>
+      <div class="module" id="mod-hb">
+        <div class="module-header" onclick="toggleModule('hb')">
+          <div class="module-left">
+            <span class="module-title">Employee & Lease Holdbacks</span>
+            <span class="badge badge-gold">Informational</span>
+          </div>
+          <span class="chevron" id="chev-hb">▾</span>
+        </div>
+        <div class="module-body" id="body-hb">
+          <div class="hint" style="margin-bottom:12px">LOI §5 · Included in WC above. Unspent portion returned to Seller 6 months post-close. Not a direct price deduction.</div>
+          <div class="grid2">
+            <div class="field-row">
+              <label class="field-label">Employee Termination Holdback</label>
+              <div class="input-wrap"><span class="prefix">$</span><input type="number" class="field" id="empHoldback" placeholder="0" oninput="render()" /></div>
+            </div>
+            <div class="field-row">
+              <label class="field-label">Facility Lease Holdback</label>
+              <div class="input-wrap"><span class="prefix">$</span><input type="number" class="field" id="leaseHoldback" placeholder="0" oninput="render()" /></div>
+            </div>
+          </div>
+          <div id="hbPreview"></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /left-panel -->
+
+  <!-- RIGHT PANEL -->
+  <div class="right-panel">
+    <div class="deal-header">
+      <div class="deal-name" id="wf-dealName">Quark / PCF Number 5</div>
+      <div class="deal-sub" id="wf-dealSub">Buyer: Zax Capital · <span id="wf-date"></span></div>
+    </div>
+
+    <div class="wf-card">
+      <div class="section-label">Purchase Price Waterfall</div>
+      <div id="wfRows"></div>
+      <div id="netBox"></div>
+    </div>
+
+    <div class="wf-card" id="hbCard" style="display:none">
+      <div class="section-label">Holdback Summary</div>
+      <div id="hbRows"></div>
+    </div>
+
+    <div class="wf-card" id="metricsCard" style="display:none">
+      <div class="section-label">Key Metrics</div>
+      <div class="metrics-grid" id="metricsGrid"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── State ────────────────────────────────────────────────────────────────────
+let customAdjs = [];
+let customId = 0;
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+const n = id => parseFloat(document.getElementById(id)?.value || '0') || 0;
+const checked = id => document.getElementById(id)?.checked ?? true;
+const val = id => document.getElementById(id)?.value || '';
+
+function fmtM(v) {
+  const m = v / 1e6;
+  const sign = m < 0 ? '-' : '';
+  return sign + '$' + Math.abs(m).toFixed(3) + 'M';
+}
+function fmtK(v) {
+  if (Math.abs(v) >= 1e6) return fmtM(v);
+  const sign = v < 0 ? '-' : '';
+  return sign + '$' + Math.abs(v / 1000).toFixed(1) + 'K';
+}
+function pct(v, base) {
+  return base !== 0 ? (v / base * 100).toFixed(1) + '%' : '—';
+}
+function colorClass(v) {
+  return v > 0 ? 'pos' : v < 0 ? 'neg' : '';
+}
+
+// ─── Module Toggle ────────────────────────────────────────────────────────────
+function toggleModule(id) {
+  const body = document.getElementById('body-' + id);
+  const chev = document.getElementById('chev-' + id);
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  chev.classList.toggle('open', !isOpen);
+}
+
+// ─── Custom Adjustments ───────────────────────────────────────────────────────
+function addCustom() {
+  customAdjs.push({ id: ++customId, name: '', value: '', dir: 'deduct' });
+  renderCustomList();
+  render();
+}
+function removeCustom(id) {
+  customAdjs = customAdjs.filter(c => c.id !== id);
+  renderCustomList();
+  render();
+}
+function updateCustom(id, field, value) {
+  const c = customAdjs.find(x => x.id === id);
+  if (c) c[field] = value;
+  render();
+}
+function renderCustomList() {
+  const list = document.getElementById('customList');
+  list.innerHTML = customAdjs.map(c => `
+    <div class="custom-row">
+      <input class="field" style="flex:2;font-size:12px;padding:7px 8px" placeholder="Adjustment name"
+        value="${c.name}" oninput="updateCustom(${c.id},'name',this.value)" />
+      <select class="field" style="flex:1" onchange="updateCustom(${c.id},'dir',this.value)">
+        <option value="add" ${c.dir==='add'?'selected':''}>+ Add</option>
+        <option value="deduct" ${c.dir==='deduct'?'selected':''}>− Deduct</option>
+      </select>
+      <input type="number" class="field" style="flex:1;font-size:12px;padding:7px 8px" placeholder="Amount"
+        value="${c.value}" oninput="updateCustom(${c.id},'value',this.value)" />
+      <button class="del-btn" onclick="removeCustom(${c.id})">✕</button>
+    </div>
+  `).join('');
+}
+
+// ─── Main Render ──────────────────────────────────────────────────────────────
+function render() {
+  const basePP = n('basePP');
+  const arr = n('validatedARR');
+  const wcCap = arr * 0.05;
+
+  // WC
+  const netAR = n('wcNetAR');
+  const empTerm = n('wcEmpTerm');
+  const leaseObl = n('wcLease');
+  const otherLiab = n('wcOther');
+  const wcEnabled = checked('wcEnabled');
+  const tangWC = netAR - empTerm - leaseObl - otherLiab;
+  const wcRaw = tangWC;
+  const wcAdj = wcEnabled ? (tangWC > 0 ? Math.min(tangWC, wcCap) : tangWC) : 0;
+  const wcCapped = wcEnabled && tangWC > 0 && tangWC > wcCap;
+  const wcHasInput = netAR || empTerm || leaseObl || otherLiab;
+
+  // DR
+  const softDR = n('softDR');
+  const nonSoftDR = n('nonSoftDR');
+  const drEnabled = checked('drEnabled');
+  const drThresh = arr * 0.5;
+  const softExcess = Math.max(0, softDR - drThresh);
+  const drAdj = drEnabled ? -(softExcess + nonSoftDR) : 0;
+  const drHasInput = softDR || nonSoftDR;
+
+  // Quark India
+  const qiReserve = n('qiReserve');
+  const qiEnabled = checked('qiEnabled');
+  const qiAdj = qiEnabled ? -(qiReserve * 0.18) : 0;
+
+  // Custom
+  let customTotal = 0;
+  customAdjs.forEach(c => {
+    const v = parseFloat(c.value) || 0;
+    customTotal += c.dir === 'add' ? v : -v;
+  });
+
+  // Net
+  const netPP = basePP + wcAdj + drAdj + qiAdj + customTotal;
+  const delta = netPP - basePP;
+
+  // Holdbacks
+  const empHB = n('empHoldback');
+  const leaseHB = n('leaseHoldback');
+  const totalHB = empHB + leaseHB;
+
+  // ── Deal header ──
+  document.getElementById('wf-dealName').textContent = val('dealName') || 'Deal Name';
+  document.getElementById('wf-dealSub').innerHTML = `Buyer: ${val('buyerName') || '—'} · <span id="wf-date">${new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}</span>`;
+
+  // ── Derived row ──
+  const dr = document.getElementById('derivedRow');
+  if (arr > 0) {
+    dr.innerHTML = `
+      <div class="derived-item">WC cap: <span>${fmtK(wcCap)}</span> (5% of ARR)</div>
+      <div class="derived-item">DR threshold: <span>${fmtK(drThresh)}</span> (50% of ARR)</div>
+      ${basePP > 0 ? `<div class="derived-item">EV/ARR: <span style="color:var(--blue)">${(basePP/arr).toFixed(2)}x</span></div>` : ''}
+    `;
+  } else dr.innerHTML = '';
+
+  // ── Module: active state ──
+  document.getElementById('mod-wc').className = 'module' + (wcEnabled ? ' active' : ' inactive');
+  document.getElementById('mod-dr').className = 'module' + (drEnabled ? ' active' : ' inactive');
+  document.getElementById('mod-qi').className = 'module' + (qiEnabled ? ' active' : ' inactive');
+
+  // ── Badges ──
+  function setBadge(id, text, cls) {
+    const b = document.getElementById('badge-' + id);
+    b.textContent = text;
+    b.className = 'badge ' + cls;
+  }
+  if (wcEnabled && wcHasInput) {
+    setBadge('wc', (wcAdj >= 0 ? '+' : '') + fmtK(wcAdj), wcAdj >= 0 ? 'badge-green' : 'badge-red');
+  } else setBadge('wc', 'Not entered', 'badge-blue');
+
+  if (drEnabled && drHasInput) {
+    setBadge('dr', fmtK(drAdj), drAdj < 0 ? 'badge-red' : 'badge-green');
+  } else setBadge('dr', 'Not entered', 'badge-blue');
+
+  if (qiEnabled && qiReserve) {
+    setBadge('qi', fmtK(qiAdj), 'badge-red');
+  } else setBadge('qi', 'Not entered', 'badge-blue');
+
+  const cCount = customAdjs.length;
+  setBadge('custom', cCount > 0 ? `${cCount} item${cCount>1?'s':''} · ${customTotal>=0?'+':''}${fmtK(customTotal)}` : 'None',
+    customTotal > 0 ? 'badge-green' : customTotal < 0 ? 'badge-red' : 'badge-blue');
+
+  // ── WC Preview ──
+  const wcPrev = document.getElementById('wcPreview');
+  if (wcHasInput) {
+    wcPrev.innerHTML = `
+      <div class="calc-preview">
+        <div class="calc-row"><span>Net AR</span><span style="color:var(--green)">+${fmtK(netAR)}</span></div>
+        <div class="calc-row"><span>Assumed liabilities</span><span style="color:var(--red)">−${fmtK(empTerm+leaseObl+otherLiab)}</span></div>
+        <div class="calc-total"><span>Tangible WC</span><span style="color:${tangWC>=0?'var(--green)':'var(--red)'}">${fmtK(tangWC)}</span></div>
+        ${wcCapped ? `<div class="cap-warning">⚠ Capped at ${fmtK(wcCap)} (5% of ARR). Excess of ${fmtK(tangWC-wcCap)} not applied.</div>` : ''}
+      </div>`;
+  } else wcPrev.innerHTML = '';
+
+  // ── DR Preview ──
+  const drPrev = document.getElementById('drPreview');
+  if (drHasInput) {
+    drPrev.innerHTML = `
+      <div class="calc-preview">
+        <div class="calc-row"><span>Software DR</span><span>${fmtK(softDR)}</span></div>
+        <div class="calc-row"><span>50% ARR threshold</span><span>${fmtK(drThresh)}</span></div>
+        <div class="calc-row"><span>SW excess deducted</span><span style="color:var(--red)">−${fmtK(softExcess)}</span></div>
+        <div class="calc-row"><span>Non-SW DR (100%)</span><span style="color:var(--red)">−${fmtK(nonSoftDR)}</span></div>
+        <div class="calc-total"><span>Total DR Adjustment</span><span style="color:${drAdj<0?'var(--red)':'var(--text2)'}">${fmtK(drAdj)}</span></div>
+      </div>`;
+  } else drPrev.innerHTML = '';
+
+  // ── QI Preview ──
+  const qiPrev = document.getElementById('qiPreview');
+  if (qiReserve) {
+    qiPrev.innerHTML = `<div class="hint" style="margin-top:6px">${fmtK(qiReserve)} × 18% = <span style="color:var(--red)">${fmtK(qiAdj)}</span></div>`;
+  } else qiPrev.innerHTML = '';
+
+  // ── Holdback Preview ──
+  const hbPrev = document.getElementById('hbPreview');
+  if (totalHB > 0) {
+    hbPrev.innerHTML = `<div class="hint" style="margin-top:8px">Total holdback tracked: <span style="color:var(--gold)">${fmtK(totalHB)}</span> — returned to seller if unspent by 6-month anniversary</div>`;
+  } else hbPrev.innerHTML = '';
+
+  // ── Waterfall Rows ──
+  function wfRow(label, val, sub, boldVal, cls) {
+    const valClass = cls || (val > 0 ? 'pos' : val < 0 ? 'neg' : '');
+    return `
+      <div class="wf-row">
+        <div><div class="wf-label">${label}</div>${sub ? `<div class="wf-sub">${sub}</div>` : ''}</div>
+        <div class="wf-val ${valClass} ${boldVal?'wf-bold':''}">${val !== null ? fmtK(val) : '—'}</div>
+      </div>`;
+  }
+
+  let rows = '';
+  rows += wfRow('Base Purchase Price (LOI)', basePP, basePP > 0 ? fmtM(basePP) : '', true, 'gold');
+  rows += '<div class="wf-divider"></div>';
+  rows += wfRow('Working Capital Adjustment',
+    wcEnabled ? wcAdj : null,
+    wcEnabled ? (wcCapped ? `Capped (raw WC: ${fmtK(tangWC)})` : wcHasInput ? `Tangible WC: ${fmtK(tangWC)}` : 'Enter WC inputs') : 'Disabled',
+    false, !wcEnabled ? 'dim' : '');
+  rows += wfRow('Deferred Revenue Adjustment',
+    drEnabled ? drAdj : null,
+    drEnabled ? (drHasInput ? `SW excess: ${fmtK(softExcess)} · Non-SW: ${fmtK(nonSoftDR)}` : 'Enter DR values') : 'Disabled',
+    false, !drEnabled ? 'dim' : '');
+  rows += wfRow('Quark India Reserve (18%)',
+    qiEnabled ? qiAdj : null,
+    qiEnabled ? (qiReserve ? `Reserve: ${fmtK(qiReserve)}` : 'Enter reserve balance') : 'Disabled',
+    false, !qiEnabled ? 'dim' : '');
+  customAdjs.forEach(c => {
+    const v = parseFloat(c.value) || 0;
+    const adj = c.dir === 'add' ? v : -v;
+    rows += wfRow(c.name || 'Custom adjustment', c.value ? adj : null, '', false);
+  });
+  rows += '<div class="wf-divider"></div>';
+
+  document.getElementById('wfRows').innerHTML = rows;
+
+  // Net box
+  if (basePP > 0) {
+    const deltaColor = delta > 0 ? 'var(--green)' : delta < 0 ? 'var(--red)' : 'var(--muted)';
+    document.getElementById('netBox').innerHTML = `
+      <div class="net-box">
+        <div>
+          <div class="net-label">Net Purchase Price</div>
+          <div class="net-value">${fmtM(netPP)}</div>
+        </div>
+        <div class="net-delta">
+          <div class="net-delta-val" style="color:${deltaColor}">${delta>=0?'+':''}${fmtK(delta)}</div>
+          <div class="net-delta-pct">${pct(delta, basePP)} vs base</div>
+        </div>
+      </div>`;
+  } else {
+    document.getElementById('netBox').innerHTML = `<div class="net-box"><div><div class="net-label">Net Purchase Price</div><div class="net-value" style="color:var(--muted)">Enter base PP</div></div></div>`;
+  }
+
+  // Holdback card
+  const hbCard = document.getElementById('hbCard');
+  if (totalHB > 0) {
+    hbCard.style.display = 'block';
+    document.getElementById('hbRows').innerHTML =
+      wfRow('Employee Termination Holdback', empHB || null, 'Unspent → returned at 6-month anniversary') +
+      wfRow('Facility Lease Holdback', leaseHB || null, 'Unspent → returned at 6-month anniversary') +
+      '<div class="wf-divider"></div>' +
+      wfRow('Total Holdback', totalHB, '', true);
+  } else hbCard.style.display = 'none';
+
+  // Metrics
+  const metricsCard = document.getElementById('metricsCard');
+  if (basePP > 0 && arr > 0) {
+    metricsCard.style.display = 'block';
+    const metrics = [
+      { label: 'Base EV/ARR', value: (basePP/arr).toFixed(2) + 'x', color: 'var(--text)' },
+      { label: 'Net EV/ARR', value: (netPP/arr).toFixed(2) + 'x', color: 'var(--text)' },
+      { label: 'Total Adjustments', value: (delta>=0?'+':'') + fmtK(delta), color: delta < 0 ? 'var(--red)' : 'var(--green)' },
+      { label: 'Adj as % of Base', value: pct(delta, basePP), color: 'var(--text)' },
+    ];
+    document.getElementById('metricsGrid').innerHTML = metrics.map(m => `
+      <div class="metric-box">
+        <div class="metric-label">${m.label}</div>
+        <div class="metric-value" style="color:${m.color}">${m.value}</div>
+      </div>`).join('');
+  } else metricsCard.style.display = 'none';
+}
+
+function resetAll() {
+  document.getElementById('dealName').value = 'Quark / PCF Number 5';
+  document.getElementById('buyerName').value = 'Zax Capital';
+  document.getElementById('basePP').value = '9000000';
+  document.getElementById('validatedARR').value = '11500000';
+  ['wcNetAR','wcEmpTerm','wcLease','wcOther','softDR','nonSoftDR','qiReserve','empHoldback','leaseHoldback'].forEach(id => {
+    document.getElementById(id).value = '';
+  });
+  ['wcEnabled','drEnabled','qiEnabled'].forEach(id => document.getElementById(id).checked = true);
+  customAdjs = [];
+  renderCustomList();
+  render();
+}
+
+// Init
+document.getElementById('wf-date').textContent = new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+render();
+</script>
+</body>
+</html>
