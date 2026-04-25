@@ -1,0 +1,1318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PPA Calculator — Trilogy</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#F2F2F7;--surface:#fff;--s2:#F9F9FB;
+  --blue:#1434A4;--blue2:#2649C8;--bl:#EBF0FD;--bm:#4A6FD4;
+  --lbl:#1C1C1E;--lbl2:#3C3C43;--lbl3:#6E6E73;
+  --sep:#C6C6C8;--sep2:#E5E5EA;
+  --grn:#1A7F37;--gb:#EAF7ED;
+  --red:#C0392B;--rb:#FDECEA;
+  --gld:#7D5A00;--gldb:#FFF8E1;
+  --r:12px;--rs:8px;--sh:0 1px 3px rgba(0,0,0,.07),0 1px 2px rgba(0,0,0,.04);
+}
+body{background:var(--bg);color:var(--lbl);font-family:'Inter',sans-serif;-webkit-font-smoothing:antialiased;min-height:100vh}
+input[type=number]{-moz-appearance:textfield}
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
+
+header{background:#1434A4;border-bottom:none;padding:14px 22px 14px;display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden;min-height:88px}
+.brand{display:flex;align-items:center;gap:14px}
+.logo{width:34px;height:34px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.25);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;font-family:'Playfair Display',serif;font-size:16px;font-weight:800}
+.title{font-family:'Playfair Display',serif;font-size:18px;font-weight:800;color:#fff;line-height:1.1}
+.credit{font-size:11px;color:rgba(255,255,255,.55);margin-top:2px}.credit b{color:rgba(255,255,255,.75);font-weight:500}
+.rbtn{font-size:12px;color:var(--lbl3);background:none;border:1px solid var(--sep);border-radius:6px;padding:5px 12px;cursor:pointer;font-weight:500}
+.rbtn:hover{background:var(--bg)}
+
+.layout{display:flex;height:calc(100vh - 73px)}
+.left{width:50%;padding:16px 18px;overflow-y:auto;border-right:1.5px solid #C8C5BE;background:#F2F0EB}
+.right{width:50%;padding:16px 18px;overflow-y:auto;background:#F2F0EB}
+
+.slbl{font-size:10px;font-weight:700;color:var(--blue);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
+
+.card{background:var(--surface);border-radius:var(--r);box-shadow:var(--sh);margin-bottom:10px;overflow:hidden}
+.ch{padding:12px 16px;display:flex;align-items:center;justify-content:space-between;cursor:pointer;user-select:none}
+.ch.op{border-bottom:1px solid var(--sep2)}
+.cl{display:flex;align-items:center;gap:8px}
+.ct{font-size:13px;font-weight:600;color:var(--lbl)}
+.cb{padding:14px 16px;display:none}.cb.op{display:block}
+.chev{color:var(--lbl3);font-size:10px;transition:transform .18s}.chev.op{transform:rotate(180deg)}
+
+.uz{border:2px dashed var(--sep);border-radius:var(--r);padding:20px 16px;text-align:center;cursor:pointer;transition:all .2s;background:var(--s2)}
+.uz:hover,.uz.drag{border-color:var(--blue);background:var(--bl)}
+.uz input[type=file]{display:none}
+.uzi{font-size:22px;margin-bottom:5px;opacity:.4}
+.uzt{font-size:13px;font-weight:600;color:var(--lbl);margin-bottom:2px}
+.uzs{font-size:11px;color:var(--lbl3)}
+.sl{font-size:11px;color:var(--bm);cursor:pointer;text-decoration:underline;margin-top:8px;display:inline-block}
+
+.pbox{background:var(--bl);border:1px solid rgba(20,52,164,.12);border-radius:var(--rs);padding:11px 14px;margin-top:10px}
+.ph2{display:flex;align-items:center;gap:6px;font-size:12px;font-weight:600;color:var(--blue);margin-bottom:8px}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--grn);flex-shrink:0}
+.pr{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid rgba(20,52,164,.08);font-size:12px}
+.pr:last-child{border-bottom:none}
+.pk{color:var(--lbl2)}.pv{font-weight:600;color:var(--blue)}
+
+.fg{margin-bottom:12px}
+.fl{font-size:11px;font-weight:600;color:var(--lbl2);margin-bottom:4px;display:flex;align-items:center;gap:4px}
+.fh{font-size:10px;color:var(--lbl3);font-weight:400}
+.ir{display:flex;align-items:center;gap:5px}
+.px2{font-size:12px;color:var(--lbl3);font-weight:500}
+input.f{background:var(--bg);border:1px solid var(--sep);border-radius:var(--rs);color:var(--lbl);font-size:13px;padding:7px 10px;width:100%;outline:none;transition:border-color .15s}
+input.f:focus{border-color:var(--blue);background:#fff}
+input.f::placeholder{color:var(--sep)}
+input.tf{background:var(--bg);border:1px solid var(--sep);border-radius:var(--rs);color:var(--lbl);font-size:13px;padding:7px 10px;width:100%;outline:none}
+input.tf:focus{border-color:var(--blue);background:#fff}
+input.pf{background:var(--bg);border:1px solid var(--sep);border-radius:var(--rs);color:var(--lbl);font-size:13px;padding:7px 10px;width:70px;outline:none}
+input.pf:focus{border-color:var(--blue);background:#fff}
+.psr{display:flex;align-items:center;gap:5px}
+.pss{font-size:12px;color:var(--lbl3)}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+select.sf{background:var(--bg);border:1px solid var(--sep);border-radius:var(--rs);color:var(--lbl);font-size:12px;padding:6px 8px;outline:none;cursor:pointer;width:100%}
+select.sf:focus{border-color:var(--blue)}
+
+.tog{position:relative;width:38px;height:21px;flex-shrink:0}
+.tog input{opacity:0;width:0;height:0;position:absolute}
+.tsl{position:absolute;top:0;left:0;right:0;bottom:0;background:#D1D1D6;border-radius:21px;cursor:pointer;transition:.18s}
+.tsl:before{content:'';position:absolute;width:15px;height:15px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.18s;box-shadow:0 1px 3px rgba(0,0,0,.2)}
+.tog input:checked+.tsl{background:var(--blue)}
+.tog input:checked+.tsl:before{transform:translateX(17px)}
+
+.badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;white-space:nowrap}
+.bg2{background:var(--gb);color:var(--grn)}.br2{background:var(--rb);color:var(--red)}
+.bb2{background:var(--bl);color:var(--blue)}.bk2{background:var(--bg);color:var(--lbl3)}.bo2{background:var(--gldb);color:var(--gld)}
+
+.cbox{background:var(--s2);border:1px solid var(--sep2);border-radius:var(--rs);padding:10px 13px;margin-top:10px;font-size:12px}
+.crow{display:flex;justify-content:space-between;margin-bottom:3px;color:var(--lbl3)}
+.ctot{display:flex;justify-content:space-between;padding-top:7px;border-top:1px solid var(--sep2);font-weight:600;color:var(--lbl);margin-top:4px}
+.cwarn{display:flex;align-items:center;gap:5px;margin-top:7px;font-size:11px;color:#B45309;background:#FFFBEB;border-radius:5px;padding:5px 8px}
+
+/* BALANCE SHEET TABLE */
+.bs-section{margin-bottom:4px}
+.bs-sec-hdr{background:var(--bl);padding:7px 12px;font-size:11px;font-weight:700;color:var(--blue);border-radius:var(--rs) var(--rs) 0 0;letter-spacing:.04em;text-transform:uppercase}
+.bs-wrap{border:1px solid var(--sep2);border-radius:0 0 var(--rs) var(--rs);overflow:hidden;margin-bottom:10px}
+table.bst{width:100%;border-collapse:collapse;font-size:12px}
+table.bst th{background:var(--s2);color:var(--lbl3);font-weight:600;font-size:10px;letter-spacing:.05em;text-transform:uppercase;padding:7px 10px;text-align:left;border-bottom:1px solid var(--sep2)}
+table.bst td{padding:6px 10px;border-bottom:1px solid var(--sep2);color:var(--lbl2);vertical-align:middle}
+table.bst tr:last-child td{border-bottom:none}
+table.bst tr:hover td{background:var(--s2)}
+.bsn{text-align:right;font-variant-numeric:tabular-nums;color:var(--lbl)}
+.bsneg{color:var(--red)}
+.bsamt{width:110px}
+input.bsf{background:var(--bg);border:1px solid var(--sep);border-radius:5px;color:var(--lbl);font-size:12px;padding:5px 8px;width:100%;outline:none;text-align:right;font-variant-numeric:tabular-nums}
+input.bsf:focus{border-color:var(--blue);background:#fff}
+.wc-sel{font-size:11px;font-weight:600;padding:4px 8px;border-radius:5px;border:1px solid;cursor:pointer;outline:none;background:#fff;min-width:60px;text-align:center}
+.wc-yes{color:var(--grn);border-color:rgba(26,127,55,.3);background:var(--gb)}
+.wc-no{color:var(--lbl3);border-color:var(--sep2);background:var(--bg)}
+.bs-total{background:var(--s2)!important}
+.bs-total td{font-weight:700;color:var(--lbl)!important;border-top:2px solid var(--sep2)!important}
+.bs-sum{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px}
+.bs-sb{background:var(--surface);border:1px solid var(--sep2);border-radius:var(--rs);padding:9px 11px;text-align:center}
+.bs-sl{font-size:10px;color:var(--lbl3);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px}
+.bs-sv{font-size:14px;font-weight:700;font-variant-numeric:tabular-nums}
+
+.adj-row{display:flex;gap:6px;margin-bottom:7px}
+.del-btn{background:var(--rb);border:1px solid rgba(192,57,43,.15);border-radius:var(--rs);padding:7px 9px;cursor:pointer;color:var(--red);flex-shrink:0;font-size:11px}
+.add-btn{font-size:12px;font-weight:600;color:var(--blue);background:var(--bl);border:1px solid rgba(20,52,164,.12);border-radius:var(--rs);padding:6px 14px;cursor:pointer}
+
+/* ARR Upload chip */
+.arr-chip{display:flex;align-items:center;gap:8px;background:var(--s2);border:1px solid var(--sep2);border-radius:var(--rs);padding:9px 12px;cursor:pointer;transition:all .2s}
+.arr-chip:hover{border-color:var(--blue);background:var(--bl)}
+.arr-chip input[type=file]{display:none}
+.arr-icon{font-size:16px;opacity:.5}
+.arr-lbl{font-size:12px;font-weight:500;color:var(--lbl2)}
+.arr-sub{font-size:10px;color:var(--lbl3);margin-top:1px}
+
+/* WATERFALL */
+.wfc{background:var(--surface);border-radius:var(--r);box-shadow:var(--sh);padding:14px 16px;margin-bottom:10px}
+.wfr{display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid var(--sep2)}
+.wfr:last-child{border-bottom:none}
+.wfl{font-size:12px;color:var(--lbl2)}.wfs{font-size:10px;color:var(--lbl3);margin-top:1px}
+.wfv{font-size:12px;font-weight:600;font-variant-numeric:tabular-nums}
+.vp{color:var(--grn)}.vn{color:var(--red)}.vb{color:var(--blue);font-weight:700}.vd{color:var(--lbl3)}
+.wfsep{height:1px;background:var(--sep2);margin:2px 0}
+
+.nbox{background:linear-gradient(135deg,#1434A4,#2649C8);border-radius:var(--rs);padding:14px 16px;margin-top:10px;display:flex;justify-content:space-between;align-items:center}
+.nlbl{font-size:9px;font-weight:700;color:rgba(255,255,255,.6);letter-spacing:.1em;text-transform:uppercase;margin-bottom:4px}
+.nval{font-family:'Playfair Display',serif;font-size:26px;font-weight:700;color:#fff}
+.ndv{font-size:13px;font-weight:700;font-variant-numeric:tabular-nums}
+.npct{font-size:10px;color:rgba(255,255,255,.55);margin-top:2px}
+
+@keyframes spin{to{transform:rotate(360deg)}}
+.spinner{width:14px;height:14px;border:2px solid var(--bl);border-top-color:var(--blue);border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+.proc{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--blue);padding:10px 0}
+.empty{text-align:center;padding:50px 20px;color:var(--lbl3)}
+.ei{font-size:32px;margin-bottom:10px;opacity:.25}.et{font-size:13px;font-weight:600;color:var(--lbl2);margin-bottom:4px}.es{font-size:11px}
+
+@media(max-width:900px){.layout{flex-direction:column;height:auto}.left,.right{width:100%;position:static}}
+
+/* ── CHAT ──────────────────────────────────────────────────────────────────── */
+.chat-btn{position:fixed;bottom:24px;right:24px;width:52px;height:52px;background:var(--blue);border-radius:50%;border:none;cursor:pointer;box-shadow:0 4px 16px rgba(20,52,164,.35);display:flex;align-items:center;justify-content:center;z-index:300;transition:transform .2s}
+.chat-btn:hover{transform:scale(1.08)}
+.chat-btn svg{width:24px;height:24px;fill:#fff}
+
+.chat-panel{position:fixed;bottom:88px;right:24px;width:380px;height:520px;background:var(--surface);border-radius:var(--r);box-shadow:0 8px 32px rgba(0,0,0,.14);z-index:300;display:flex;flex-direction:column;overflow:hidden;transition:all .25s;transform-origin:bottom right}
+.chat-panel.hidden{transform:scale(0);opacity:0;pointer-events:none}
+.chat-header{background:var(--blue);padding:14px 16px;display:flex;align-items:center;justify-content:space-between}
+.chat-header-title{color:#fff;font-size:13px;font-weight:600}
+.chat-header-sub{color:rgba(255,255,255,.65);font-size:11px;margin-top:1px}
+.chat-close{background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;font-size:18px;line-height:1;padding:2px 4px}
+.chat-close:hover{color:#fff}
+.chat-msgs{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.chat-msg{max-width:88%;padding:9px 12px;border-radius:10px;font-size:12px;line-height:1.6}
+.chat-msg.user{background:var(--blue);color:#fff;align-self:flex-end;border-radius:10px 10px 2px 10px}
+.chat-msg.ai{background:var(--s2);color:var(--lbl);align-self:flex-start;border-radius:10px 10px 10px 2px;border:1px solid var(--sep2)}
+.chat-msg.ai.thinking{color:var(--lbl3);font-style:italic}
+.chat-input-row{border-top:1px solid var(--sep2);padding:10px 12px;display:flex;gap:8px;align-items:flex-end}
+.chat-input{flex:1;background:var(--bg);border:1px solid var(--sep);border-radius:8px;padding:8px 10px;font-size:12px;font-family:inherit;resize:none;outline:none;max-height:80px;line-height:1.5}
+.chat-input:focus{border-color:var(--blue)}
+.chat-send{background:var(--blue);border:none;border-radius:8px;width:34px;height:34px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.chat-send:hover{background:var(--blue2)}
+.chat-send svg{width:16px;height:16px;fill:#fff}
+.chat-actions{display:flex;gap:6px;padding:0 14px 10px;flex-wrap:wrap}
+.chat-pill{font-size:11px;color:var(--blue);background:var(--bl);border:1px solid rgba(20,52,164,.15);border-radius:20px;padding:4px 10px;cursor:pointer;white-space:nowrap}
+.chat-pill:hover{background:var(--blue);color:#fff}
+
+.export-btn{position:fixed;bottom:24px;right:88px;background:var(--surface);border:1px solid var(--sep);border-radius:8px;padding:10px 14px;font-size:12px;font-weight:600;color:var(--lbl2);cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.08);z-index:300;display:flex;align-items:center;gap:6px}
+.export-btn:hover{border-color:var(--blue);color:var(--blue)}
+
+@media print{
+  header,.left,.chat-btn,.chat-panel,.export-btn{display:none!important}
+  .right{width:100%!important;padding:20px!important}
+  .wfc{box-shadow:none!important;border:1px solid #ccc!important}
+}
+
+.hdr-left{flex:1;z-index:2}
+.hdr-chart-wrap{z-index:1;opacity:.9;margin-right:12px}
+.hdr-pills{display:flex;flex-wrap:wrap;gap:5px}
+.hdr-pill{font-size:10px;padding:2px 9px;border-radius:20px;background:rgba(255,255,255,.12);color:rgba(255,255,255,.65);border:1px solid rgba(255,255,255,.18);font-weight:500}
+.hdr-pill.done{background:rgba(100,200,120,.22);color:#9FE1CB;border-color:rgba(100,200,120,.3)}
+.rbtn{font-size:11px;padding:5px 12px;border:1px solid rgba(255,255,255,.3);border-radius:6px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.75);cursor:pointer;z-index:2;flex-shrink:0}
+.card{background:#FAFAF8;border:1.5px solid #C8C5BE;border-radius:10px;padding:12px 14px;margin-bottom:8px}
+.ch{background:#FAFAF8;border:1.5px solid #C8C5BE}
+.ir .px2{color:var(--lbl2)}
+.insight-box{background:#FAFAF8;border:1.5px solid #C8C5BE;border-radius:10px;padding:13px 14px;margin-top:8px}
+.ins-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #E5E2DC}
+.ins-label{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#1434A4}
+.ins-badge{font-size:9px;padding:2px 7px;border-radius:20px;font-weight:500}
+.ins-badge.pending{background:#F2F0EB;color:#888780;border:1px solid #C8C5BE}
+.ins-badge.ready{background:#EAF3DE;color:#27500A;border:1px solid #C0DD97}
+.ins-waiting{font-size:11px;color:var(--lbl3);text-align:center;padding:12px 0;line-height:1.7}
+.ins-item{display:flex;gap:9px;margin-bottom:8px;align-items:flex-start}
+.ins-item:last-child{margin-bottom:0}
+.ins-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.ins-dot.red{background:#E24B4A}
+.ins-dot.amber{background:#BA7517}
+.ins-dot.green{background:#639922}
+.ins-dot.blue{background:#1434A4}
+.ins-dot.gray{background:#888780}
+.ins-sep{height:1px;background:#E5E2DC;margin:7px 0}
+.ins-txt{font-size:11px;color:var(--lbl);line-height:1.65}
+.ins-txt strong{color:var(--lbl);font-weight:600}
+.ins-txt .dim{color:var(--lbl3)}
+.ins-section-lbl{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--lbl3);margin:10px 0 6px}
+
+.upload-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:8px}
+.uc{background:#FAFAF8;border:1.5px solid #C8C5BE;border-radius:9px;padding:10px 11px;cursor:pointer;transition:border-color .15s}
+.uc.wait{border-style:dashed}
+.uc.done{border-color:#97C459}
+.uc.proc{border-color:#1434A4;background:#F5F8FE}
+.uc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}
+.uc-left{display:flex;align-items:center;gap:7px}
+.uc-ic{width:24px;height:24px;border-radius:5px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .2s}
+.uc-ic.grn{background:#EAF3DE}.uc-ic.blue{background:#E6F1FB}.uc-ic.amb{background:#FAEEDA}.uc-ic.navy{background:#1434A4}
+.uc-title{font-size:11px;font-weight:500;color:var(--color-text-primary)}
+.uc-ver{font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#1434A4;color:#fff;margin-left:4px;letter-spacing:.03em}
+.uc-bdg{font-size:9px;font-weight:500;padding:1px 6px;border-radius:20px}
+.bdg-wait{background:#F2F0EB;color:#888780;border:1px solid #C8C5BE}
+.bdg-done{background:#EAF3DE;color:#27500A;border:1px solid #C0DD97}
+.bdg-proc{background:#E6F1FB;color:#0C447C;border:1px solid #B5D4F4}
+.uc-hint{font-size:10px;color:var(--color-text-secondary);margin-bottom:5px;line-height:1.4}
+.uc-vals{font-size:10px;color:var(--color-text-secondary);line-height:1.5;margin-bottom:5px}
+.uc-vals strong{color:var(--color-text-primary);font-weight:500}
+.uc-proc-lbl{font-size:10px;color:#0C447C;margin-bottom:3px}
+.uc-prog{height:3px;background:#D0DCFA;border-radius:3px;margin-bottom:5px;overflow:hidden}
+.uc-prog-fill{height:100%;border-radius:3px;background:#1434A4;transition:width .3s}
+.uc-prog-fill.ind{width:40%;animation:ucind 1.2s ease-in-out infinite}
+@keyframes ucind{0%{transform:translateX(-150%)}100%{transform:translateX(400%)}}
+.uc-btn{width:100%;padding:4px;border-radius:5px;font-size:10px;text-align:center;cursor:pointer;font-weight:500;border:none;font-family:inherit}
+.uc-btn.rpl{background:#F2F0EB;border:1px solid #C8C5BE;color:#5F5E5A}
+.uc-btn.up{background:#1434A4;color:#fff}
+.uc-btn.dim{opacity:.4;pointer-events:none;background:#F2F0EB;border:1px solid #C8C5BE;color:#888}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="hdr-left">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+      <div class="logo">T</div>
+      <div>
+        <div class="title">Purchase Price Adjustment</div>
+        <div class="credit">Trilogy Acquisitions &nbsp;&middot;&nbsp; <b>Created by Rishap Ahuja</b></div>
+      </div>
+    </div>
+    <div class="hdr-pills">
+      <span class="hdr-pill" id="pillLOI">Awaiting LOI</span>
+      <span class="hdr-pill" id="pillBS">Awaiting balance sheet</span>
+      <span class="hdr-pill" id="pillARR">Awaiting ARR</span>
+    </div>
+  </div>
+  <svg viewBox="0 0 280 68" xmlns="http://www.w3.org/2000/svg" style="width:280px;height:68px;flex-shrink:0;opacity:.85;margin:0 16px">
+    <text x="198" y="16" font-size="9" fill="rgba(255,255,255,.2)" font-family="sans-serif">GBP</text>
+    <text x="224" y="30" font-size="8" fill="rgba(255,255,255,.15)" font-family="sans-serif">USD</text>
+    <text x="206" y="44" font-size="7" fill="rgba(255,255,255,.11)" font-family="sans-serif">EUR</text>
+    <rect x="8"  y="14" width="13" height="46" rx="2" fill="rgba(255,255,255,.38)"/>
+    <rect x="26" y="28" width="13" height="32" rx="2" fill="rgba(255,255,255,.22)"/>
+    <rect x="44" y="36" width="13" height="24" rx="2" fill="rgba(255,255,255,.17)"/>
+    <rect x="62" y="18" width="13" height="42" rx="2" fill="rgba(255,255,255,.48)"/>
+    <text x="14" y="12"  font-size="6" fill="rgba(255,255,255,.5)"  text-anchor="middle" font-family="sans-serif">PP</text>
+    <text x="32" y="26"  font-size="6" fill="rgba(255,255,255,.35)" text-anchor="middle" font-family="sans-serif">WC</text>
+    <text x="50" y="34"  font-size="6" fill="rgba(255,255,255,.3)"  text-anchor="middle" font-family="sans-serif">DR</text>
+    <text x="68" y="16"  font-size="6" fill="rgba(255,255,255,.6)"  text-anchor="middle" font-family="sans-serif">Net</text>
+    <line x1="6" y1="61" x2="82" y2="61" stroke="rgba(255,255,255,.1)" stroke-width="1"/>
+    <polyline points="96,56 108,44 120,48 132,34 144,38 156,24 168,30 180,16 192,22 204,10"
+      fill="none" stroke="rgba(255,255,255,.35)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="204" cy="10" r="2.5" fill="rgba(255,255,255,.6)"/>
+    <line x1="94" y1="22" x2="208" y2="22" stroke="rgba(255,255,255,.07)" stroke-width="1"/>
+    <line x1="94" y1="38" x2="208" y2="38" stroke="rgba(255,255,255,.07)" stroke-width="1"/>
+    <line x1="94" y1="54" x2="208" y2="54" stroke="rgba(255,255,255,.07)" stroke-width="1"/>
+    <text x="204" y="8" font-size="7" fill="rgba(255,255,255,.45)" font-family="sans-serif" id="hdrVal">—</text>
+  </svg>
+  <button class="rbtn" onclick="resetAll()">&#8635; Reset</button>
+</header>
+
+<div class="layout">
+<div class="left">
+
+  <!-- STEP 1: UPLOAD CARDS -->
+  <div style="margin-bottom:14px">
+    <div class="slbl">Documents</div>
+    <div class="upload-grid">
+      <!-- LOI CARD -->
+      <div class="uc wait" id="ucLOI" onclick="document.getElementById('loiFile').click()">
+        <input type="file" id="loiFile" accept=".pdf,.txt" style="display:none" onchange="handleLOI(this.files[0])"/>
+        <div class="uc-top">
+          <div class="uc-left">
+            <div class="uc-ic blue" id="ucLOIic"><svg width="12" height="12" viewBox="0 0 24 24" fill="#0C447C"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg></div>
+            <span class="uc-title">Letter of Intent<span class="uc-ver" id="ucLOIver" style="display:none"></span></span>
+          </div>
+          <span class="uc-bdg bdg-wait" id="ucLOIbdg">Awaiting</span>
+        </div>
+        <div class="uc-hint" id="ucLOIhint">PDF or TXT · PP, ARR, WC cap, DR threshold</div>
+        <div class="uc-vals" id="ucLOIvals" style="display:none"></div>
+        <div class="uc-proc-lbl" id="ucLOIproclbl" style="display:none"></div>
+        <div class="uc-prog" id="ucLOIprog" style="display:none"><div class="uc-prog-fill" id="ucLOIprogfill"></div></div>
+        <div id="loiStatus" style="display:none"></div>
+        <button class="uc-btn up" id="ucLOIbtn" onclick="event.stopPropagation();document.getElementById('loiFile').click()">Upload</button>
+      </div>
+      <!-- ARR CARD -->
+      <div class="uc wait" id="ucARR" onclick="document.getElementById('arrFile').click()">
+        <input type="file" id="arrFile" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleARR(this.files[0])"/>
+        <div class="uc-top">
+          <div class="uc-left">
+            <div class="uc-ic amb" id="ucARRic"><svg width="12" height="12" viewBox="0 0 24 24" fill="#633806"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3l5 5h-3v4h-4v-4H7l5-5z"/></svg></div>
+            <span class="uc-title">ARR Report<span class="uc-ver" id="ucARRver" style="display:none"></span></span>
+          </div>
+          <span class="uc-bdg bdg-wait" id="ucARRbdg">Awaiting</span>
+        </div>
+        <div class="uc-hint" id="ucARRhint">CSV or XLSX · validated in-force ARR</div>
+        <div class="uc-vals" id="ucARRvals" style="display:none"></div>
+        <div class="uc-proc-lbl" id="ucARRproclbl" style="display:none"></div>
+        <div class="uc-prog" id="ucARRprog" style="display:none"><div class="uc-prog-fill" id="ucARRprogfill"></div></div>
+        <button class="uc-btn up" id="ucARRbtn" onclick="event.stopPropagation();document.getElementById('arrFile').click()">Upload</button>
+      </div>
+      <!-- BS CARD -->
+      <div class="uc wait" id="ucBS" onclick="document.getElementById('bsFile').click()">
+        <input type="file" id="bsFile" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleBS(this.files[0])"/>
+        <div class="uc-top">
+          <div class="uc-left">
+            <div class="uc-ic blue" id="ucBSic"><svg width="12" height="12" viewBox="0 0 24 24" fill="#0C447C"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg></div>
+            <span class="uc-title">Balance Sheet<span class="uc-ver" id="ucBSver" style="display:none"></span></span>
+          </div>
+          <span class="uc-bdg bdg-wait" id="ucBSbdg">Awaiting</span>
+        </div>
+        <div class="uc-hint" id="ucBShint">XLSX · AI reads WC + DR split</div>
+        <div class="uc-vals" id="ucBSvals" style="display:none"></div>
+        <div class="uc-proc-lbl" id="ucBSproclbl" style="display:none"></div>
+        <div class="uc-prog" id="ucBSprog" style="display:none"><div class="uc-prog-fill" id="ucBSprogfill"></div></div>
+        <div id="bsStatus" style="display:none"></div>
+        <button class="uc-btn up" id="ucBSbtn" onclick="event.stopPropagation();document.getElementById('bsFile').click()">Upload</button>
+      </div>
+    </div>
+    <div style="text-align:center;margin-top:2px"><span class="sl" onclick="skipLOI()">Skip — enter manually</span></div>
+  </div>
+
+  <!-- MAIN CONTENT -->
+  <div id="mainContent" style="display:none">
+
+    <!-- STEP 2: DEAL INFO + ARR -->
+    <div style="margin-bottom:14px">
+      <div class="slbl">Step 2 — Deal Information</div>
+      <div class="card">
+        <div class="cb op" style="padding:14px">
+          <div class="g2">
+            <div class="fg"><div class="fl">Target / Deal</div><input class="tf" id="dealName" placeholder="Company name" oninput="render()"/></div>
+            <div class="fg"><div class="fl">Buyer</div><input class="tf" id="buyerName" placeholder="Buyer name" oninput="render()"/></div>
+          </div>
+          <div class="g2" style="margin-bottom:12px">
+            <div class="fg"><div class="fl">Base Purchase Price <span class="fh">(from LOI)</span></div><div class="ir"><span class="px2">$</span><input type="number" class="f" id="basePP" placeholder="0" oninput="render()"/></div></div>
+            <div class="fg">
+              <div class="fl">Validated In-Force ARR <span class="fh">(from LOI or upload)</span></div>
+              <div class="ir"><span class="px2">$</span><input type="number" class="f" id="validatedARR" placeholder="0" oninput="render()"/></div>
+            </div>
+          </div>
+          
+          <input type="hidden" id="dealCurrency" value="USD"/>
+          <div id="derivedRow" style="margin-top:10px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 3: ADJUSTMENTS -->
+    <div class="slbl">Step 3 — Closing Adjustments</div>
+
+    <!-- WC -->
+    <div class="card">
+      <div class="ch op" id="hdr-wc" onclick="toggleCard('wc')">
+        <div class="cl">
+          <label class="tog" onclick="event.stopPropagation()"><input type="checkbox" id="wcEnabled" checked onchange="render()"/><span class="tsl"></span></label>
+          <span class="ct">Working Capital</span>
+          <span class="badge bk2" id="badge-wc">Not entered</span>
+        </div>
+        <span class="chev op" id="chev-wc">▾</span>
+      </div>
+      <div class="cb op" id="body-wc">
+        
+
+        <div style="font-size:11px;color:var(--lbl3);margin-bottom:12px;line-height:1.6">
+          Tangible WC = Net AR − Assumed Liabilities &nbsp;·&nbsp; Increases capped at <strong id="wcCapLabel">5%</strong> of ARR
+          
+        </div>
+        <div class="g2">
+          <div class="fg"><div class="fl">Net AR / Current Assets <span id="bsFeedNote" style="color:var(--blue);display:none;font-weight:400">· from BS</span></div><div class="ir"><span class="px2">$</span><input type="number" class="f" id="wcNetAR" placeholder="0" oninput="render()"/></div></div>
+          <div class="fg"><div class="fl">Employee Termination Costs</div><div class="ir"><span class="px2">$</span><input type="number" class="f" id="wcEmpTerm" placeholder="0" oninput="render()"/></div></div>
+          <div class="fg"><div class="fl">Ongoing Lease Obligations</div><div class="ir"><span class="px2">$</span><input type="number" class="f" id="wcLease" placeholder="0" oninput="render()"/></div></div>
+          <div class="fg"><div class="fl">Other Assumed Liabilities</div><div class="ir"><span class="px2">$</span><input type="number" class="f" id="wcOther" placeholder="0" oninput="render()"/></div></div>
+        </div>
+        <div class="fg" style="max-width:180px">
+          <div class="fl">Increase Cap <span class="fh">(% of ARR)</span></div>
+          <div class="psr"><input type="number" class="pf" id="wcCapPct" value="5" step="0.1" oninput="render()"/><span class="pss">%</span></div>
+        </div>
+        <div id="wcPreview"></div>
+      </div>
+    </div>
+
+    <!-- DR -->
+    <div class="card">
+      <div class="ch op" id="hdr-dr" onclick="toggleCard('dr')">
+        <div class="cl">
+          <label class="tog" onclick="event.stopPropagation()"><input type="checkbox" id="drEnabled" checked onchange="render()"/><span class="tsl"></span></label>
+          <span class="ct">Deferred Revenue</span>
+          <span class="badge bk2" id="badge-dr">Not entered</span>
+        </div>
+        <span class="chev op" id="chev-dr">▾</span>
+      </div>
+      <div class="cb op" id="body-dr">
+        <div style="font-size:11px;color:var(--lbl3);margin-bottom:12px;line-height:1.6">
+          Deduct: Software DR exceeding <strong id="drThreshLabel">50%</strong> of ARR + 100% of Non-Software DR
+        </div>
+        <div class="g2" style="margin-bottom:10px">
+          <div class="fg"><div class="fl">Software Deferred Revenue</div><div class="ir"><span class="px2">$</span><input type="number" class="f" id="softDR" placeholder="0" oninput="render()"/></div></div>
+          <div class="fg"><div class="fl">Non-Software Deferred Revenue</div><div class="ir"><span class="px2">$</span><input type="number" class="f" id="nonSoftDR" placeholder="0" oninput="render()"/></div></div>
+        </div>
+        <div class="fg" style="max-width:180px">
+          <div class="fl">SW DR Threshold <span class="fh">(% of ARR)</span></div>
+          <div class="psr"><input type="number" class="pf" id="drThreshPct" value="50" step="1" oninput="render()"/><span class="pss">%</span></div>
+        </div>
+        <div id="drPreview"></div>
+      </div>
+    </div>
+
+    <!-- DYNAMIC (LOI-parsed) -->
+    <div id="dynamicModules"></div>
+
+    <!-- CUSTOM -->
+    <div class="card">
+      <div class="ch" id="hdr-custom" onclick="toggleCard('custom')">
+        <div class="cl"><span class="ct">Custom Adjustments</span><span class="badge bk2" id="badge-custom">None</span></div>
+        <span class="chev" id="chev-custom">▾</span>
+      </div>
+      <div class="cb" id="body-custom">
+        <div style="font-size:11px;color:var(--lbl3);margin-bottom:10px">Add deal-specific adjustments not captured above</div>
+        <div id="customList"></div>
+        <button class="add-btn" onclick="addCustom()">+ Add</button>
+      </div>
+    </div>
+
+    <!-- HOLDBACKS (conditional on LOI) -->
+    <div id="holdbackSection" style="display:none">
+      <div class="card">
+        <div class="ch" id="hdr-hb" onclick="toggleCard('hb')">
+          <div class="cl"><span class="ct">Employee & Lease Holdbacks</span><span class="badge bo2">Informational</span></div>
+          <span class="chev" id="chev-hb">▾</span>
+        </div>
+        <div class="cb" id="body-hb">
+          <div style="font-size:11px;color:var(--lbl3);margin-bottom:12px;line-height:1.6">Included in WC. Unspent amounts returned to Seller 6 months post-close. Not a direct price deduction.</div>
+          <div class="g2">
+            <div class="fg"><div class="fl">Employee Termination Holdback</div><div class="ir"><span class="px2">$</span><input type="number" class="f" id="empHoldback" placeholder="0" oninput="render()"/></div></div>
+            <div class="fg"><div class="fl">Facility Lease Holdback</div><div class="ir"><span class="px2">$</span><input type="number" class="f" id="leaseHoldback" placeholder="0" oninput="render()"/></div></div>
+          </div>
+          <div id="hbNote"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- RIGHT PANEL -->
+<div class="right">
+  <div id="rightPanel">
+    <div class="empty">
+      <div class="ei">📋</div>
+      <div class="et">Upload an LOI to begin</div>
+      <div class="es">Or skip to enter manually</div>
+    </div>
+  </div>
+</div>
+</div>
+
+<script>
+if(typeof pdfjsLib!=='undefined')
+  pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let customAdjs=[], customId=0, dynamicMods=[], bsSections=[], loiHasHoldback=false;
+let dealCurrency='USD';
+
+// ── CURRENCY ──────────────────────────────────────────────────────────────────
+function currSym(){
+  const el=document.getElementById('dealCurrency');
+  const c=(el&&el.value)||dealCurrency||'USD';
+  return c==='GBP'?'£':c==='EUR'?'€':c==='AUD'?'A$':c==='CAD'?'C$':'$';
+}
+function updateCurrencyUI(){
+  const sym=currSym();
+  document.querySelectorAll('.px2').forEach(el=>{ el.textContent=sym; });
+}
+
+// ── FORMATTERS ────────────────────────────────────────────────────────────────
+function fmtM(x){
+  const m=x/1e6, s=m<0?'-':'';
+  return s+currSym()+Math.abs(m).toFixed(3)+'M';
+}
+function fmtK(x){
+  if(x===null||x===undefined)return '—';
+  if(Math.abs(x)>=1e6) return fmtM(x);
+  if(Math.abs(x)===0) return currSym()+'0';
+  const s=x<0?'-':'';
+  return s+currSym()+Math.abs(x/1000).toFixed(1)+'K';
+}
+function pct(x,b){ return b?((x/b)*100).toFixed(1)+'%':'—'; }
+
+// ── DOM HELPERS ───────────────────────────────────────────────────────────────
+const $=id=>document.getElementById(id);
+const n=id=>parseFloat($(id)?.value||'0')||0;
+const chk=id=>$(id)?.checked??true;
+const vv=id=>$(id)?.value||'';
+
+// ── CARD TOGGLE ───────────────────────────────────────────────────────────────
+function toggleCard(id){
+  const body=$('body-'+id), chev=$('chev-'+id), hdr=$('hdr-'+id);
+  if(!body) return;
+  const open=body.classList.contains('op');
+  body.classList.toggle('op',!open);
+  chev.classList.toggle('op',!open);
+  if(hdr) hdr.classList.toggle('op',!open);
+}
+
+// ── LOI PARSING ───────────────────────────────────────────────────────────────
+function loiDrop(e){ e.preventDefault(); $('uZone').classList.remove('drag'); handleLOI(e.dataTransfer.files[0]); }
+
+async function handleLOI(file){
+  if(!file) return;
+  ucSetProc('LOI','Reading LOI');
+  try{
+    const text = file.name.toLowerCase().endsWith('.pdf')||file.type==='application/pdf'
+      ? await extractPDF(file) : await file.text();
+    ucSetProc('LOI','Extracting');
+    const resp = await fetch('/api/parse-loi',{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({text})
+    });
+    const parsed = await resp.json();
+    if(!resp.ok) throw new Error(parsed.error||'API error '+resp.status);
+
+    // Set currency first — everything else depends on it
+    if(parsed.currency){
+      dealCurrency=parsed.currency;
+      const cEl=document.getElementById('dealCurrency');
+      if(cEl) cEl.value=parsed.currency;
+    }
+
+    // Build display-friendly found array using correct currency symbol
+    const sym=currSym();
+    parsed.found=[];
+    if(parsed.basePP)      parsed.found.push({k:'Base Purchase Price', v:sym+Number(parsed.basePP).toLocaleString()+' ('+dealCurrency+')'});
+    if(parsed.validatedARR)parsed.found.push({k:'Validated ARR',       v:sym+(parsed.validatedARR/1e6).toFixed(1)+'M ('+dealCurrency+')'});
+    if(parsed.wcCapPct)    parsed.found.push({k:'WC Increase Cap',     v:parsed.wcCapPct+'% of ARR'});
+    if(parsed.drThreshPct) parsed.found.push({k:'SW DR Threshold',     v:parsed.drThreshPct+'% of ARR'});
+    if(parsed.indiaPct)    parsed.found.push({k:'India Reserve',       v:parsed.indiaPct+'% of Reserve & Surplus'});
+    if(parsed.hasHoldback) parsed.found.push({k:'Holdback / Escrow',   v:'Detected'});
+    if(parsed.additionalAdjustments) parsed.additionalAdjustments.forEach(a=>parsed.found.push({k:a.name,v:a.description}));
+
+    applyParsed(parsed);
+    renderParseResult(parsed);
+    const loiVals = [];
+    if(parsed.basePP) loiVals.push('<strong>'+currSym()+(parsed.basePP/1e6).toFixed(2)+'M</strong> PP');
+    if(parsed.wcCapPct) loiVals.push('<strong>'+parsed.wcCapPct+'%</strong> WC cap');
+    if(parsed.hasHoldback) loiVals.push('Holdback');
+    ucSetDone('LOI', loiVals.join(' · ')||'Fields extracted');
+    uploadedFiles.loi = true;
+    const pLOI=document.getElementById('pillLOI');if(pLOI){pLOI.textContent='LOI uploaded';pLOI.className='hdr-pill done';}
+    const hv=document.getElementById('hdrVal');if(hv&&n('basePP'))hv.textContent='$'+(n('basePP')/1e6).toFixed(2)+'M';
+    showMain();
+    checkAutoInsight();
+  }catch(err){
+    console.error(err);
+    ucSetWait('LOI'); alert('LOI extraction failed: '+err.message);
+    showMain();
+  }
+}
+
+async function extractPDF(file){
+  const ab=await file.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:ab}).promise;
+  let text='';
+  for(let i=1;i<=pdf.numPages;i++){
+    const pg=await pdf.getPage(i);
+    const c=await pg.getTextContent();
+    text+=c.items.map(s=>s.str).join(' ')+'\n';
+  }
+  return text;
+}
+
+function renderParseResult(p){
+  const el=$('loiStatus');
+  if(!p.found||!p.found.length){
+    el.innerHTML='<div style="font-size:12px;color:var(--lbl3);padding:8px 0;text-align:center">No fields extracted — enter below.</div>';
+    return;
+  }
+  el.innerHTML=`<div class="pbox">
+    <div class="ph2"><div class="dot"></div>${p.found.length} field${p.found.length>1?'s':''} extracted — applied below, all editable</div>
+    ${p.found.map(f=>`<div class="pr"><span class="pk">${f.k}</span><span class="pv">${f.v}</span></div>`).join('')}
+  </div>`;
+}
+
+function applyParsed(p){
+  if(p.basePP)       $('basePP').value=p.basePP;
+  if(p.validatedARR) $('validatedARR').value=p.validatedARR;
+  if(p.wcCapPct)     $('wcCapPct').value=p.wcCapPct;
+  if(p.drThreshPct)  $('drThreshPct').value=p.drThreshPct;
+  if(p.targetName)   $('dealName').value=p.targetName;
+  if(p.buyerName)    $('buyerName').value=p.buyerName;
+  if(p.indiaPct){
+    dynamicMods=dynamicMods.filter(m=>m.id!=='india');
+    dynamicMods.push({id:'india',title:'India Reserve Adjustment',enabled:true,
+      loiNote:`Deduct ${p.indiaPct}% of India subsidiary Reserve & Surplus balance at Closing`,
+      amtId:'indiaAmt',amtLabel:'Reserve & Surplus Balance',pctId:'indiaPct',pctDefault:p.indiaPct,pctLabel:'Deduction %'});
+  }
+  if(p.additionalAdjustments&&p.additionalAdjustments.length){
+    p.additionalAdjustments.forEach((adj,i)=>{
+      const id='adj_'+i;
+      dynamicMods=dynamicMods.filter(m=>m.id!==id);
+      dynamicMods.push({id,title:adj.name,enabled:true,loiNote:adj.description,
+        amtId:id+'Amt',amtLabel:'Amount',pctId:id+'Pct',pctDefault:100,pctLabel:'Applied %'});
+    });
+  }
+  renderDynamic();
+  if(p.hasHoldback){ loiHasHoldback=true; $('holdbackSection').style.display='block'; }
+  updateCurrencyUI();
+}
+
+function skipLOI(){ showMain(); }
+function showMain(){ $('mainContent').style.display='block'; $('rightPanel').innerHTML=buildRight(); render(); }
+
+// ── ARR UPLOAD ────────────────────────────────────────────────────────────────
+async function handleARR(file){
+  if(!file) return;
+  ucSetProc('ARR','Extracting');
+  try{
+    const ab=await file.arrayBuffer();
+    let rows=[], tabName='';
+    if(file.name.toLowerCase().endsWith('.csv')){
+      rows=new TextDecoder().decode(ab).trim().split('\n').map(l=>l.split(',').map(c=>c.trim().replace(/^"|"$/g,'')));
+      tabName='CSV';
+    }else{
+      const wb=XLSX.read(ab,{type:'array'});
+      const tab=wb.SheetNames.find(s=>/arr/i.test(s))||wb.SheetNames[0];
+      tabName=tab;
+      rows=XLSX.utils.sheet_to_json(wb.Sheets[tab],{header:1,defval:''});
+    }
+    const resp=await fetch('/api/parse-arr',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rows,sheetName:tabName})});
+    const data=await resp.json();
+    if(!resp.ok) throw new Error(data.error||'API error');
+    if(data.validatedARR){
+      $('validatedARR').value=data.validatedARR;
+      if(data.currency) dealCurrency=data.currency;
+      const sym=currSym();
+      let lbl='✓ '+file.name+' — ARR: '+sym+(data.validatedARR/1e6).toFixed(2)+'M';
+      if(data.breakdown&&data.breakdown.length)
+        lbl+=' ('+data.breakdown.map(b=>b.name+': '+sym+(b.amount/1e6).toFixed(1)+'M').join(', ')+')';
+      const sym2=data.currency==='GBP'?'\u00a3':data.currency==='EUR'?'\u20ac':'$';
+      ucSetDone('ARR','Validated <strong>'+sym2+(data.validatedARR/1e6).toFixed(2)+'M</strong> ARR');
+      uploadedFiles.arr = true;
+    const pARR=document.getElementById('pillARR');if(pARR){pARR.textContent='ARR loaded';pARR.className='hdr-pill done';}
+      updateCurrencyUI();
+      render();
+      checkAutoInsight();
+    }else{
+      $('arrLbl').textContent='✓ '+file.name+' — ARR not found, enter manually';
+    }
+  }catch(e){ ucSetWait('ARR'); alert('ARR extraction failed: '+e.message); }
+}
+
+// ── BALANCE SHEET UPLOAD ──────────────────────────────────────────────────────
+function bsDrop(e){ e.preventDefault(); $('bsZone').classList.remove('drag'); handleBS(e.dataTransfer.files[0]); }
+
+async function handleBS(file){
+  if(!file) return;
+  ucSetProc('BS','Reading file');
+  try{
+    const ab=await file.arrayBuffer();
+    let rows=[], tabName='';
+    if(file.name.toLowerCase().endsWith('.csv')){
+      rows=new TextDecoder().decode(ab).trim().split('\n').map(l=>l.split(',').map(c=>c.trim().replace(/^"|"$/g,'')));
+      tabName='CSV';
+    }else{
+      const wb=XLSX.read(ab,{type:'array'});
+      // Priority: 1) "Closing financial statements" (has Assumed col) 2) FIN_68 3) any balance sheet
+      const tab=wb.SheetNames.find(s=>/closing financial statements/i.test(s))||
+                wb.SheetNames.find(s=>/fin.?68/i.test(s))||
+                wb.SheetNames.find(s=>/closing.?balance|balance.?sheet/i.test(s))||
+                wb.SheetNames.find(s=>/balance|financ|closing/i.test(s))||
+                wb.SheetNames[0];
+      tabName=tab;
+      rows=XLSX.utils.sheet_to_json(wb.Sheets[tab],{header:1,defval:''});
+    }
+    ucSetProc('BS','Extracting');
+    const resp=await fetch('/api/parse-bs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rows,sheetName:tabName})});
+    const data=await resp.json();
+    if(!resp.ok) throw new Error(data.error||'API error '+resp.status);
+
+    // Use Claude's pre-calculated WC figures (from Assumed + Include in WC columns)
+    // Fall back to section-level calculation if not provided
+    const assets=(data.sections||[]).find(s=>s.title==='Assets');
+    const liabs=(data.sections||[]).find(s=>s.title==='Liabilities');
+    const wcAssets=data.wcAssets||
+      (assets?assets.rows.filter(r=>r.includeWC).reduce((s,r)=>s+(r.assumed||r.amount||0),0):0);
+    const wcLiabs=data.wcLiabilities||
+      (liabs?Math.abs(liabs.rows.filter(r=>r.includeWC).reduce((s,r)=>s+(r.assumed||r.amount||0),0)):0);
+    if(wcAssets){ $('wcNetAR').value=Math.round(wcAssets); }
+    if(wcLiabs) { $('wcOther').value=Math.round(wcLiabs); }
+
+    // Populate DR fields from Claude's split
+    const dr=data.deferredRevenue||{};
+    if(dr.software&&$('softDR'))   $('softDR').value=Math.round(dr.software);
+    if(dr.services&&$('nonSoftDR'))$('nonSoftDR').value=Math.round(dr.services);
+
+    const wcNet = data.wcAssets||0, wcLib = data.wcLiabilities||0;
+    const wc = Math.round((wcNet-wcLib)/1000);
+    const drTot = Math.round(((data.deferredRevenue&&data.deferredRevenue.total)||0)/1000);
+    const sym3 = currSym();
+    ucSetDone('BS','WC <strong>'+sym3+(wc>=0?'+':'')+wc+'K</strong> · DR <strong>'+sym3+drTot+'K</strong>');
+    uploadedFiles.bs = true;
+    const pBS=document.getElementById('pillBS');if(pBS){pBS.textContent='Balance sheet loaded';pBS.className='hdr-pill done';}
+    checkAutoInsight();
+
+    // Show "· from BS" indicator
+    const note=$('bsFeedNote');
+    if(note) note.style.display='inline';
+
+    // Add DR note
+    if((dr.software||dr.services)&&!document.getElementById('drFeedNote')){
+      const hint=document.createElement('div');
+      hint.id='drFeedNote';
+      hint.style.cssText='font-size:11px;color:var(--blue);margin-bottom:10px;font-weight:500';
+      hint.textContent='✓ Split auto-extracted from Balance Sheet · Software vs Services · override if needed';
+      const drBody=$('body-dr');
+      if(drBody) drBody.insertBefore(hint,drBody.firstChild);
+    }
+    render();
+  }catch(err){
+    console.error(err);
+    ucSetWait('BS'); alert('Balance sheet extraction failed: '+err.message);
+  }
+}
+
+function isWCAsset(name){ return /receivable|prepaid|other.?current|bank|cash/i.test(name) && !/inter.?group|intra|goodwill|fixed|intangible/i.test(name); }
+function isWCLiab(name){  return /payable|accrued|deferred/i.test(name); }
+
+// ── DYNAMIC MODULES ───────────────────────────────────────────────────────────
+function renderDynamic(){
+  $('dynamicModules').innerHTML=dynamicMods.map(m=>`
+    <div class="card">
+      <div class="ch op" id="hdr-${m.id}" onclick="toggleCard('${m.id}')">
+        <div class="cl">
+          <label class="tog" onclick="event.stopPropagation()"><input type="checkbox" id="${m.id}En" ${m.enabled?'checked':''} onchange="render()"/><span class="tsl"></span></label>
+          <span class="ct">${m.title}</span><span class="badge bk2" id="badge-${m.id}">Not entered</span>
+        </div>
+        <span class="chev op" id="chev-${m.id}">▾</span>
+      </div>
+      <div class="cb op" id="body-${m.id}">
+        <div style="font-size:11px;color:var(--lbl3);margin-bottom:12px">${m.loiNote||''}</div>
+        <div class="g2">
+          <div class="fg"><div class="fl">${m.amtLabel}</div><div class="ir"><span class="px2">${currSym()}</span><input type="number" class="f" id="${m.amtId}" placeholder="0" oninput="render()"/></div></div>
+          <div class="fg"><div class="fl">${m.pctLabel}</div><div class="psr"><input type="number" class="pf" id="${m.pctId}" value="${m.pctDefault}" step="0.1" oninput="render()"/><span class="pss">%</span></div></div>
+        </div>
+        <div id="${m.id}Prev"></div>
+      </div>
+    </div>`).join('');
+}
+
+// ── CUSTOM ADJUSTMENTS ────────────────────────────────────────────────────────
+function addCustom(){ customAdjs.push({id:++customId,name:'',value:'',dir:'deduct'}); renderCustom(); render(); }
+function removeCustom(id){ customAdjs=customAdjs.filter(c=>c.id!==id); renderCustom(); render(); }
+function updateCustom(id,f,v){ const c=customAdjs.find(x=>x.id===id); if(c)c[f]=v; render(); }
+function renderCustom(){
+  $('customList').innerHTML=customAdjs.map(c=>`
+    <div class="adj-row">
+      <input class="f" style="flex:2;font-size:12px" placeholder="Name" value="${c.name}" oninput="updateCustom(${c.id},'name',this.value)"/>
+      <select class="sf" style="flex:1" onchange="updateCustom(${c.id},'dir',this.value)">
+        <option value="add" ${c.dir==='add'?'selected':''}>+ Add</option>
+        <option value="deduct" ${c.dir==='deduct'?'selected':''}>− Deduct</option>
+      </select>
+      <input type="number" class="f" style="flex:1;font-size:12px" placeholder="Amount" value="${c.value}" oninput="updateCustom(${c.id},'value',this.value)"/>
+      <button class="del-btn" onclick="removeCustom(${c.id})">✕</button>
+    </div>`).join('');
+}
+
+// ── RIGHT PANEL ───────────────────────────────────────────────────────────────
+function buildRight(){
+  return `<div class="slbl">Purchase Price Waterfall</div>
+  <div class="wfc">
+    <div style="margin-bottom:10px">
+      <div style="font-size:15px;font-weight:700;color:var(--blue);font-family:'Playfair Display',serif" id="wfName">—</div>
+      <div style="font-size:11px;color:var(--lbl3);margin-top:2px" id="wfSub"></div>
+    </div>
+    <div id="wfRows"></div>
+    <div id="netBox"></div>
+  </div>
+  <div class="insight-box" id="insightBox">
+    <div class="ins-hdr">
+      <span class="ins-label">Deal Intelligence</span>
+      <span class="ins-badge pending" id="insBadge">Awaiting data</span>
+    </div>
+    <div id="insightContent">
+      <div class="ins-waiting">Upload LOI, balance sheet and ARR report<br>to generate deal insights.</div>
+    </div>
+  </div>
+  <div id="hbCard" style="display:none">
+    <div class="wfc"><div class="slbl" style="margin-bottom:8px">Holdback Tracker</div><div id="hbRows"></div></div>
+  </div>`;
+}
+
+// ── MAIN RENDER ───────────────────────────────────────────────────────────────
+function render(){
+  if(!$('wfRows')) return;
+  updateCurrencyUI();
+
+  const basePP=n('basePP'), arr=n('validatedARR');
+  const wcCapPct=n('wcCapPct')||5, drThreshPct=n('drThreshPct')||50;
+  const wcCap=arr*(wcCapPct/100), drThresh=arr*(drThreshPct/100);
+
+  // Update inline labels
+  const wcLbl=$('wcCapLabel'), drLbl=$('drThreshLabel');
+  if(wcLbl) wcLbl.textContent=wcCapPct+'%';
+  if(drLbl) drLbl.textContent=drThreshPct+'%';
+
+  // Working Capital
+  const netAR=n('wcNetAR'), empTerm=n('wcEmpTerm'), leaseObl=n('wcLease'), otherLiab=n('wcOther');
+  const wcEn=chk('wcEnabled');
+  const tangWC=netAR-empTerm-leaseObl-otherLiab;
+  const wcAdj=wcEn?(tangWC>0?Math.min(tangWC,wcCap):tangWC):0;
+  const wcCapped=wcEn&&tangWC>0&&tangWC>wcCap;
+  const wcHas=netAR||empTerm||leaseObl||otherLiab;
+
+  // Deferred Revenue
+  const softDR=n('softDR'), nonSoftDR=n('nonSoftDR'), drEn=chk('drEnabled');
+  const softExcess=Math.max(0,softDR-drThresh);
+  const drAdj=drEn?-(softExcess+nonSoftDR):0;
+  const drHas=softDR||nonSoftDR;
+
+  // Dynamic modules
+  let dynTotal=0;
+  dynamicMods.forEach(m=>{
+    const en=chk(m.id+'En'), amt=n(m.amtId), pv=n(m.pctId);
+    const adj=en?-(amt*(pv/100)):0; dynTotal+=adj;
+    const b=$('badge-'+m.id); if(b){ b.textContent=amt?fmtK(adj):'Not entered'; b.className='badge '+(adj<0?'br2':amt?'bg2':'bk2'); }
+    const prev=$(m.id+'Prev');
+    if(prev) prev.innerHTML=amt?`<div class="cbox"><div class="crow"><span>${m.amtLabel}</span><span>${fmtK(amt)}</span></div><div class="crow"><span>Rate</span><span>${pv}%</span></div><div class="ctot"><span>Adjustment</span><span style="color:var(--red)">${fmtK(adj)}</span></div></div>`:'';
+  });
+
+  // Custom
+  let custTotal=0;
+  customAdjs.forEach(c=>{ const v=parseFloat(c.value)||0; custTotal+=c.dir==='add'?v:-v; });
+
+  const netPP=basePP+wcAdj+drAdj+dynTotal+custTotal, delta=netPP-basePP;
+
+  // Derived row
+  const dr=$('derivedRow');
+  if(dr&&arr>0) dr.innerHTML=`<div style="display:flex;gap:14px;flex-wrap:wrap;margin-top:4px">
+    <span style="font-size:11px;color:var(--lbl3)">WC cap <strong style="color:var(--blue)">${fmtK(wcCap)}</strong></span>
+    <span style="font-size:11px;color:var(--lbl3)">DR threshold <strong style="color:var(--blue)">${fmtK(drThresh)}</strong></span>
+    ${basePP>0?`<span style="font-size:11px;color:var(--lbl3)">EV/ARR <strong style="color:var(--blue)">${(basePP/arr).toFixed(2)}x</strong></span>`:''}
+  </div>`;
+
+  // Badges
+  function bd(id,txt,cls){ const b=$(id); if(b){ b.textContent=txt; b.className='badge '+cls; } }
+  bd('badge-wc', wcEn&&wcHas?(wcAdj>=0?'+':'')+fmtK(wcAdj):'Not entered', wcEn&&wcHas?(wcAdj>=0?'bg2':'br2'):'bk2');
+  bd('badge-dr', drEn&&drHas?fmtK(drAdj):'Not entered', drEn&&drHas&&drAdj<0?'br2':drEn&&drHas?'bg2':'bk2');
+  bd('badge-custom', customAdjs.length>0?`${customAdjs.length} · ${custTotal>=0?'+':''}${fmtK(custTotal)}`:'None', custTotal>0?'bg2':custTotal<0?'br2':'bk2');
+
+  // WC Preview
+  const wp=$('wcPreview');
+  if(wp) wp.innerHTML=wcHas?`<div class="cbox">
+    <div class="crow"><span>Net AR / Current Assets</span><span style="color:var(--grn)">+${fmtK(netAR)}</span></div>
+    <div class="crow"><span>Assumed liabilities</span><span style="color:var(--red)">−${fmtK(empTerm+leaseObl+otherLiab)}</span></div>
+    <div class="ctot"><span>Tangible WC</span><span style="color:${tangWC>=0?'var(--grn)':'var(--red)'}">${fmtK(tangWC)}</span></div>
+    ${wcCapped?`<div class="cwarn">⚠ Capped at ${fmtK(wcCap)} (${wcCapPct}% of ARR) · Uncapped excess: ${fmtK(tangWC-wcCap)}</div>`:''}
+  </div>`:'';
+
+  // DR Preview
+  const dp=$('drPreview');
+  if(dp) dp.innerHTML=drHas?`<div class="cbox">
+    <div class="crow"><span>Software DR</span><span>${fmtK(softDR)}</span></div>
+    <div class="crow"><span>${drThreshPct}% ARR threshold</span><span>${fmtK(drThresh)}</span></div>
+    <div class="crow"><span>SW excess deducted</span><span style="color:var(--red)">−${fmtK(softExcess)}</span></div>
+    <div class="crow"><span>Non-SW DR (100%)</span><span style="color:var(--red)">−${fmtK(nonSoftDR)}</span></div>
+    <div class="ctot"><span>Total DR Adjustment</span><span style="color:${drAdj<0?'var(--red)':'var(--lbl)'}">${fmtK(drAdj)}</span></div>
+  </div>`:'';
+
+  // Holdback
+  const empHB=n('empHoldback'), leaseHB=n('leaseHoldback'), totalHB=empHB+leaseHB;
+  const hn=$('hbNote');
+  if(hn) hn.innerHTML=totalHB>0?`<div style="font-size:11px;color:var(--gld);margin-top:6px">Tracked: <strong>${fmtK(totalHB)}</strong> — returned to seller if unspent at 6-month anniversary</div>`:'';
+
+  // Waterfall
+  $('wfName').textContent=vv('dealName')||'Deal Name';
+  $('wfSub').textContent=`Buyer: ${vv('buyerName')||'—'} · ${new Date().toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}`;
+
+  function wfr(lbl,val,sub,cls){
+    if(val===null||val===undefined) return `<div class="wfr"><div><div class="wfl" style="color:var(--lbl3)">${lbl}</div>${sub?`<div class="wfs">${sub}</div>`:''}</div><div class="wfv vd">—</div></div>`;
+    const vc=cls||(val>0?'vp':val<0?'vn':'');
+    const disp=cls?fmtK(val):(val>0?'+':'')+fmtK(val);
+    return `<div class="wfr"><div><div class="wfl">${lbl}</div>${sub?`<div class="wfs">${sub}</div>`:''}</div><div class="wfv ${vc}">${disp}</div></div>`;
+  }
+
+  let rows = wfr('Base Purchase Price', basePP, basePP>0?fmtM(basePP):undefined, 'vb');
+  rows += '<div class="wfsep"></div>';
+  rows += wfr('Working Capital', wcEn?wcAdj:null, wcEn?(wcCapped?`Capped (raw ${fmtK(tangWC)})`:wcHas?`Tangible WC: ${fmtK(tangWC)}`:'Enter inputs'):'Disabled');
+  rows += wfr('Deferred Revenue', drEn?drAdj:null, drEn?(drHas?`SW excess ${fmtK(softExcess)} · Non-SW ${fmtK(nonSoftDR)}`:'Enter inputs'):'Disabled');
+  dynamicMods.forEach(m=>{
+    const en=chk(m.id+'En'), amt=n(m.amtId), pv=n(m.pctId), adj=en?-(amt*(pv/100)):0;
+    rows+=wfr(m.title, en?adj:null, en&&amt?`${fmtK(amt)} × ${pv}%`:'Enter inputs');
+  });
+  customAdjs.forEach(c=>{ const v=parseFloat(c.value)||0; rows+=wfr(c.name||'Custom adjustment', c.value?(c.dir==='add'?v:-v):null, ''); });
+  rows += '<div class="wfsep"></div>';
+  $('wfRows').innerHTML=rows;
+
+  // Net PP box
+  const sym=currSym();
+  $('netBox').innerHTML=basePP>0?`<div class="nbox">
+    <div><div class="nlbl">Net Purchase Price</div><div class="nval">${fmtM(netPP)}</div></div>
+    <div style="text-align:right">
+      <div class="ndv" style="color:${delta>0?'#fff':delta<0?'#FFB3AE':'rgba(255,255,255,.6)'}">${delta>=0?'+':''}${fmtK(delta)}</div>
+      <div class="npct">${pct(delta,basePP)} vs base</div>
+    </div>
+  </div>`:
+  `<div class="nbox"><div><div class="nlbl">Net Purchase Price</div><div style="font-size:16px;font-weight:600;color:rgba(255,255,255,.3)">Enter base PP →</div></div></div>`;
+
+  // Holdback card
+  const hbc=$('hbCard');
+  if(hbc){
+    if(loiHasHoldback&&totalHB>0){
+      hbc.style.display='block';
+      $('hbRows').innerHTML=
+        wfr('Employee Termination', empHB||null, 'Returned if unspent at 6mo')+
+        wfr('Facility Lease', leaseHB||null, 'Returned if unspent at 6mo')+
+        '<div class="wfsep"></div>'+
+        `<div class="wfr"><div class="wfl" style="font-weight:700">Total Holdback</div><div class="wfv" style="color:var(--gld);font-weight:700">${fmtK(totalHB)}</div></div>`;
+    }else hbc.style.display='none';
+  }
+}
+
+// ── RESET ─────────────────────────────────────────────────────────────────────
+function resetAll(){
+  ['dealName','buyerName'].forEach(id=>{ if($(id)) $(id).value=''; });
+  ['basePP','validatedARR','wcNetAR','wcEmpTerm','wcLease','wcOther',
+   'softDR','nonSoftDR','empHoldback','leaseHoldback'].forEach(id=>{ if($(id)) $(id).value=''; });
+  $('wcCapPct').value='5'; $('drThreshPct').value='50';
+  ['wcEnabled','drEnabled'].forEach(id=>{ if($(id)) $(id).checked=true; });
+  $('loiStatus').innerHTML=''; $('uzTitle').textContent='Upload LOI (PDF or TXT)';
+  if($('bsStatus')) $('bsStatus').innerHTML='';
+  if($('bsTitle'))  $('bsTitle').textContent='Upload Balance Sheet (XLSX / CSV)';
+  $('arrLbl').textContent='Upload ARR Report';
+  const drn=document.getElementById('drFeedNote'); if(drn) drn.remove();
+  bsSections=[]; customAdjs=[]; customId=0; dynamicMods=[];
+  loiHasHoldback=false; dealCurrency='USD'; window._autoInsightDone=false;
+  fileVersions={loi:0,arr:0,bs:0};
+  ['LOI','ARR','BS'].forEach(id=>ucSetWait(id)); uploadedFiles={loi:false,bs:false,arr:false};
+  ['pillLOI','pillBS','pillARR'].forEach((id,i)=>{const el=document.getElementById(id);if(el){el.className='hdr-pill';el.textContent=['Awaiting LOI','Awaiting balance sheet','Awaiting ARR'][i];}});
+  const ib=document.getElementById('insightContent');if(ib)ib.innerHTML='<div class="ins-waiting">Upload LOI, balance sheet and ARR report<br>to generate deal insights.</div>';
+  const ibadge=document.getElementById('insBadge');if(ibadge){ibadge.textContent='Awaiting data';ibadge.className='ins-badge pending';} const _cEl=document.getElementById('dealCurrency'); if(_cEl) _cEl.value='USD';
+  renderCustom(); renderDynamic();
+  $('holdbackSection').style.display='none';
+  $('mainContent').style.display='none';
+  $('rightPanel').innerHTML=`<div class="empty"><div class="ei">📋</div><div class="et">Upload an LOI to begin</div><div class="es">Or skip to enter manually</div></div>`;
+}
+
+// ── CHAT ──────────────────────────────────────────────────────────────────────
+let chatMessages = [];
+let chatOpen = false;
+
+function checkAutoInsight(){
+  // Trigger when LOI + BS uploaded, or LOI + ARR at minimum
+  const hasCore = uploadedFiles.loi && (uploadedFiles.bs || uploadedFiles.arr);
+  if(!hasCore) return;
+  // Only trigger once
+  if(window._autoInsightDone) return;
+  window._autoInsightDone = true;
+  // Small delay to let render settle
+  setTimeout(()=>{
+    if(!chatOpen) toggleChat();
+    showInsightPopup();
+  }, 800);
+}
+
+async function showInsightPopup(){
+  // Show loading state with a distinct popup style
+  const msgs = document.getElementById('chatMsgs');
+
+  // Divider
+  const divider = document.createElement('div');
+  divider.style.cssText = 'display:flex;align-items:center;gap:8px;margin:8px 0';
+  divider.innerHTML = '<div style="flex:1;height:1px;background:var(--sep2)"></div><span style="font-size:10px;color:var(--lbl3);white-space:nowrap;font-weight:600">AUTO ANALYSIS</span><div style="flex:1;height:1px;background:var(--sep2)"></div>';
+  msgs.appendChild(divider);
+
+  const thinking = document.createElement('div');
+  thinking.className = 'chat-msg ai thinking';
+  thinking.innerHTML = '🔍 Analysing deal...';
+  msgs.appendChild(thinking);
+  msgs.scrollTop = msgs.scrollHeight;
+
+  try{
+    const state = getDealState();
+    const resp = await fetch('/api/chat', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        messages:[{
+          role:'user',
+          content:`All financial data has been uploaded. Give me your top 3-5 deal insights right now — risks, whether the price is fair, what adjustments look unusual, and what I should negotiate harder on. Be direct and specific to the numbers in front of you.`
+        }],
+        dealState: state
+      })
+    });
+    const data = await resp.json();
+    thinking.remove();
+
+    // Show as highlighted insight card
+    // Populate chat bubble
+    const card = document.createElement('div');
+    card.style.cssText = 'background:linear-gradient(135deg,#EBF0FD,#F5F7FF);border:1px solid rgba(20,52,164,.2);border-radius:10px;padding:12px 14px;font-size:12px;line-height:1.7;color:var(--lbl);margin:4px 0';
+    card.innerHTML = '<div style="font-size:10px;font-weight:700;color:var(--blue);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">Deal Intelligence</div>' +
+      data.text.replace(/\n/g,'<br>');
+    msgs.appendChild(card);
+    msgs.scrollTop = msgs.scrollHeight;
+    // Also populate the inline insight box
+    populateInsightBox(data.text);
+
+    // Store in chat history
+    chatMessages.push({role:'user', content:'Auto-analysis on file upload'});
+    chatMessages.push({role:'assistant', content: data.text});
+
+    // Pulse the chat button to draw attention
+    const btn = document.querySelector('.chat-btn');
+    if(btn){ btn.style.animation='none'; btn.style.boxShadow='0 0 0 4px rgba(20,52,164,.3)'; }
+
+  }catch(err){
+    thinking.remove();
+    addChatMsg('assistant','Auto-analysis failed: '+err.message);
+  }
+}
+
+function populateInsightBox(text){
+  const box = document.getElementById('insightContent');
+  const badge = document.getElementById('insBadge');
+  if(!box) return;
+  if(badge){ badge.textContent='Auto-generated'; badge.className='ins-badge ready'; }
+  // Parse bullet lines into structured items
+  const lines = text.split('\n').filter(l=>l.trim());
+  let html='';
+  const dotColor = (line) => {
+    const l=line.toLowerCase();
+    if(/risk|warn|caution|concern|flag|negative|below|weak/i.test(l)) return 'red';
+    if(/watch|note|consider|check|verify|unknown|missing/i.test(l)) return 'amber';
+    if(/strong|positive|good|above|recommend|next step|action/i.test(l)) return 'green';
+    if(/multiple|ratio|benchmark|typical|market|saas|ev\/arr/i.test(l)) return 'blue';
+    return 'gray';
+  };
+  lines.forEach((line,i)=>{
+    const clean=line.replace(/^[-•*\d.]+\s*/,'').trim();
+    if(!clean) return;
+    if(i>0) html+='<div class="ins-sep"></div>';
+    html+=`<div class="ins-item"><div class="ins-dot ${dotColor(clean)}"></div><div class="ins-txt">${clean}</div></div>`;
+  });
+  box.innerHTML=html||'<div class="ins-waiting">Analysis complete.</div>';
+}
+
+
+// ── UPLOAD CARD STATE HELPERS ─────────────────────────────────────────────────
+function ucSetProc(id, label){
+  const card = document.getElementById('uc'+id);
+  if(!card) return;
+  card.className = 'uc proc';
+  document.getElementById('uc'+id+'bdg').textContent = label;
+  document.getElementById('uc'+id+'bdg').className = 'uc-bdg bdg-proc';
+  document.getElementById('uc'+id+'ic').className = 'uc-ic navy';
+  document.getElementById('uc'+id+'hint').style.display = 'none';
+  document.getElementById('uc'+id+'vals').style.display = 'none';
+  document.getElementById('uc'+id+'proclbl').style.display = 'block';
+  document.getElementById('uc'+id+'proclbl').textContent = label+'...';
+  document.getElementById('uc'+id+'prog').style.display = 'block';
+  document.getElementById('uc'+id+'progfill').className = 'uc-prog-fill ind';
+  document.getElementById('uc'+id+'btn').className = 'uc-btn dim';
+  document.getElementById('uc'+id+'btn').textContent = 'Please wait';
+}
+
+function ucSetDone(id, vals, icColor){
+  fileVersions[id.toLowerCase()]++;
+  const v = fileVersions[id.toLowerCase()];
+  const card = document.getElementById('uc'+id);
+  if(!card) return;
+  card.className = 'uc done';
+  document.getElementById('uc'+id+'bdg').textContent = 'Done';
+  document.getElementById('uc'+id+'bdg').className = 'uc-bdg bdg-done';
+  const ic = document.getElementById('uc'+id+'ic');
+  ic.className = 'uc-ic grn';
+  // Green checkmark icon
+  ic.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="#27500A"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>';
+  document.getElementById('uc'+id+'hint').style.display = 'none';
+  document.getElementById('uc'+id+'proclbl').style.display = 'none';
+  document.getElementById('uc'+id+'prog').style.display = 'none';
+  const valsEl = document.getElementById('uc'+id+'vals');
+  valsEl.innerHTML = vals;
+  valsEl.style.display = 'block';
+  const verEl = document.getElementById('uc'+id+'ver');
+  verEl.textContent = 'V'+v;
+  verEl.style.display = 'inline';
+  const btn = document.getElementById('uc'+id+'btn');
+  btn.className = 'uc-btn rpl';
+  btn.textContent = 'Replace → V'+(v+1);
+}
+
+function ucSetWait(id){
+  const card = document.getElementById('uc'+id);
+  if(!card) return;
+  card.className = 'uc wait';
+  document.getElementById('uc'+id+'bdg').textContent = 'Awaiting';
+  document.getElementById('uc'+id+'bdg').className = 'uc-bdg bdg-wait';
+  document.getElementById('uc'+id+'prog').style.display = 'none';
+  document.getElementById('uc'+id+'proclbl').style.display = 'none';
+  document.getElementById('uc'+id+'vals').style.display = 'none';
+  document.getElementById('uc'+id+'ver').style.display = 'none';
+  document.getElementById('uc'+id+'hint').style.display = 'block';
+  document.getElementById('uc'+id+'btn').className = 'uc-btn up';
+  document.getElementById('uc'+id+'btn').textContent = 'Upload';
+}
+
+function toggleChat(){
+  chatOpen = !chatOpen;
+  const panel = document.getElementById('chatPanel');
+  panel.classList.toggle('hidden', !chatOpen);
+  if(chatOpen) document.getElementById('chatInput').focus();
+}
+
+function getDealState(){
+  const basePP = n('basePP'), arr = n('validatedARR');
+  const wcCapPct = n('wcCapPct')||5, drThreshPct = n('drThreshPct')||50;
+  const netAR = n('wcNetAR'), empTerm = n('wcEmpTerm');
+  const lease = n('wcLease'), other = n('wcOther');
+  const tangWC = netAR - empTerm - lease - other;
+  const wcCap = arr * (wcCapPct/100);
+  const wcAdj = chk('wcEnabled') ? (tangWC > 0 ? Math.min(tangWC, wcCap) : tangWC) : 0;
+  const softDR = n('softDR'), nonSoftDR = n('nonSoftDR');
+  const drThresh = arr * (drThreshPct/100);
+  const softExcess = Math.max(0, softDR - drThresh);
+  const drAdj = chk('drEnabled') ? -(softExcess + nonSoftDR) : 0;
+  let dynTotal = 0;
+  dynamicMods.forEach(m => {
+    if(chk(m.id+'En')) dynTotal -= n(m.amtId) * (n(m.pctId)/100);
+  });
+  let custTotal = 0;
+  customAdjs.forEach(c => { const v = parseFloat(c.value)||0; custTotal += c.dir==='add'?v:-v; });
+  const netPP = basePP + wcAdj + drAdj + dynTotal + custTotal;
+  return {
+    dealName: vv('dealName'), buyerName: vv('buyerName'),
+    currency: (document.getElementById('dealCurrency')?.value)||'USD',
+    basePP, validatedARR: arr, wcCapPct, drThreshPct,
+    wcNetAR: netAR, wcEmpTerm: empTerm, wcLease: lease, wcOther: other,
+    tangibleWC: tangWC, wcCap, wcAdj,
+    softDR, nonSoftDR, drThresh, softExcess, drAdj,
+    netPP, delta: netPP - basePP,
+    customAdjustments: customAdjs,
+    dynamicModules: dynamicMods.map(m=>({title:m.title,amount:n(m.amtId),pct:n(m.pctId),enabled:chk(m.id+'En')}))
+  };
+}
+
+function addChatMsg(role, text){
+  chatMessages.push({role, content: text});
+  const msgs = document.getElementById('chatMsgs');
+  const div = document.createElement('div');
+  div.className = 'chat-msg ' + (role==='user'?'user':'ai');
+  div.textContent = text;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return div;
+}
+
+async function sendChat(){
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if(!text) return;
+  input.value = '';
+  input.style.height = 'auto';
+  document.getElementById('chatPills').style.display = 'none';
+  addChatMsg('user', text);
+
+  // Check if this is a code improvement request
+  const isImprove = /^\/improve\b|improve the (app|code|ui|calculation|logic)|add (a |an )?(feature|section|button|field)|change the (ui|design|layout|color|font)|remove |rename |fix the code/i.test(text);
+
+  if(isImprove){
+    await handleImprove(text);
+    return;
+  }
+
+  const thinking = addChatMsg('assistant', 'Thinking...');
+  thinking.classList.add('thinking');
+  try{
+    const resp = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ messages: [...chatMessages], dealState: getDealState() })
+    });
+    const data = await resp.json();
+    if(!resp.ok) throw new Error(data.error||'API error');
+    thinking.remove();
+    addChatMsg('assistant', data.text);
+    if(data.action){
+      if(data.action.type==='SET_FIELD'){
+        const el=document.getElementById(data.action.field);
+        if(el){ el.value=data.action.value; render(); }
+      } else if(data.action.type==='EXPORT_PDF') exportPDF();
+    }
+  }catch(err){
+    thinking.remove();
+    addChatMsg('assistant', 'Error: '+err.message);
+  }
+}
+
+async function handleImprove(request){
+  const thinking = addChatMsg('assistant', '⚙️ Generating code improvement...');
+  thinking.classList.add('thinking');
+  try{
+    // Fetch current index.html source
+    const codeResp = await fetch(window.location.href);
+    const currentCode = await codeResp.text();
+
+    const resp = await fetch('/api/improve', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ request, currentCode, targetFile:'index.html' })
+    });
+    const data = await resp.json();
+    if(!resp.ok) throw new Error(data.error||'API error');
+
+    thinking.remove();
+
+    // Create download link
+    const blob = new Blob([data.modifiedCode], {type:'text/html'});
+    const url = URL.createObjectURL(blob);
+    const msgs = document.getElementById('chatMsgs');
+    const div = document.createElement('div');
+    div.className = 'chat-msg ai';
+    div.innerHTML = `✅ Code updated for: <em>${request}</em><br><br>
+      <a href="${url}" download="index.html" style="display:inline-block;background:var(--blue);color:#fff;padding:6px 14px;border-radius:6px;text-decoration:none;font-size:11px;font-weight:600;margin-top:4px">
+        ⬇ Download updated index.html
+      </a>
+      <div style="font-size:10px;color:var(--lbl3);margin-top:8px">Upload to GitHub → Vercel auto-deploys</div>`;
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+  }catch(err){
+    thinking.remove();
+    addChatMsg('assistant', 'Code generation failed: '+err.message);
+  }
+}
+
+function sendQuick(text){
+  document.getElementById('chatInput').value = text;
+  sendChat();
+}
+
+// ── PDF EXPORT ────────────────────────────────────────────────────────────────
+function exportPDF(){
+  window.print();
+}
+
+
+</script>
+
+<!-- EXPORT BUTTON -->
+<button class="export-btn" onclick="exportPDF()">📄 Export PDF</button>
+
+<!-- CHAT BUTTON -->
+<button class="chat-btn" onclick="toggleChat()" title="Ask the AI assistant">
+  <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
+</button>
+
+<!-- CHAT PANEL -->
+<div class="chat-panel hidden" id="chatPanel">
+  <div class="chat-header">
+    <div>
+      <div class="chat-header-title">PPA Assistant</div>
+      <div class="chat-header-sub">Ask about calculations, request changes, export</div>
+    </div>
+    <button class="chat-close" onclick="toggleChat()">×</button>
+  </div>
+  <div class="chat-msgs" id="chatMsgs">
+    <div class="chat-msg ai">Senior M&A analyst here. Upload your deal files, then ask me anything — deal risks, negotiation strategy, whether the multiple is fair, or what adjustments you're missing.</div>
+  </div>
+  <div class="chat-actions" id="chatPills">
+    <span class="chat-pill" onclick="sendQuick('Review this deal — flag any risks or red flags')">🚨 Flag risks</span>
+    <span class="chat-pill" onclick="sendQuick('Is the EV/ARR multiple fair for this type of business?')">EV/ARR multiple</span>
+    <span class="chat-pill" onclick="sendQuick('What adjustments am I missing that are standard for software deals?')">Missing adjustments</span>
+    <span class="chat-pill" onclick="sendQuick('Where will the seller push back in negotiations?')">Negotiation intel</span>
+    <span class="chat-pill" onclick="sendQuick('What is the downside scenario if ARR comes in 20% below validation?')">Downside scenario</span>
+    <span class="chat-pill" onclick="sendQuick('Export to PDF')">Export PDF</span>
+  </div>
+  <div class="chat-input-row">
+    <textarea class="chat-input" id="chatInput" placeholder="Ask anything about this deal..." rows="1"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat()}"
+      oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,80)+'px'"></textarea>
+    <button class="chat-send" onclick="sendChat()">
+      <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+    </button>
+  </div>
+</div>
+
+</body>
+</html>
