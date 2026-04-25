@@ -5,7 +5,150 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <title>PPA Calculator — Trilogy</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js">
+// ── CHAT ──────────────────────────────────────────────────────────────────────
+let chatMessages = [];
+let chatOpen = false;
+
+function toggleChat(){
+  chatOpen = !chatOpen;
+  const panel = document.getElementById('chatPanel');
+  panel.classList.toggle('hidden', !chatOpen);
+  if(chatOpen) document.getElementById('chatInput').focus();
+}
+
+function getDealState(){
+  const basePP = n('basePP'), arr = n('validatedARR');
+  const wcCapPct = n('wcCapPct')||5, drThreshPct = n('drThreshPct')||50;
+  const netAR = n('wcNetAR'), empTerm = n('wcEmpTerm');
+  const lease = n('wcLease'), other = n('wcOther');
+  const tangWC = netAR - empTerm - lease - other;
+  const wcCap = arr * (wcCapPct/100);
+  const wcAdj = chk('wcEnabled') ? (tangWC > 0 ? Math.min(tangWC, wcCap) : tangWC) : 0;
+  const softDR = n('softDR'), nonSoftDR = n('nonSoftDR');
+  const drThresh = arr * (drThreshPct/100);
+  const softExcess = Math.max(0, softDR - drThresh);
+  const drAdj = chk('drEnabled') ? -(softExcess + nonSoftDR) : 0;
+  let dynTotal = 0;
+  dynamicMods.forEach(m => {
+    if(chk(m.id+'En')) dynTotal -= n(m.amtId) * (n(m.pctId)/100);
+  });
+  let custTotal = 0;
+  customAdjs.forEach(c => { const v = parseFloat(c.value)||0; custTotal += c.dir==='add'?v:-v; });
+  const netPP = basePP + wcAdj + drAdj + dynTotal + custTotal;
+  return {
+    dealName: vv('dealName'), buyerName: vv('buyerName'),
+    currency: (document.getElementById('dealCurrency')?.value)||'USD',
+    basePP, validatedARR: arr, wcCapPct, drThreshPct,
+    wcNetAR: netAR, wcEmpTerm: empTerm, wcLease: lease, wcOther: other,
+    tangibleWC: tangWC, wcCap, wcAdj,
+    softDR, nonSoftDR, drThresh, softExcess, drAdj,
+    netPP, delta: netPP - basePP,
+    customAdjustments: customAdjs,
+    dynamicModules: dynamicMods.map(m=>({title:m.title,amount:n(m.amtId),pct:n(m.pctId),enabled:chk(m.id+'En')}))
+  };
+}
+
+function addChatMsg(role, text){
+  chatMessages.push({role, content: text});
+  const msgs = document.getElementById('chatMsgs');
+  const div = document.createElement('div');
+  div.className = 'chat-msg ' + (role==='user'?'user':'ai');
+  div.textContent = text;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return div;
+}
+
+async function sendChat(){
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if(!text) return;
+  input.value = '';
+  input.style.height = 'auto';
+  document.getElementById('chatPills').style.display = 'none';
+  addChatMsg('user', text);
+
+  // Check if this is a code improvement request
+  const isImprove = /^\/improve\b|improve the (app|code|ui|calculation|logic)|add (a |an )?(feature|section|button|field)|change the (ui|design|layout|color|font)|remove |rename |fix the code/i.test(text);
+
+  if(isImprove){
+    await handleImprove(text);
+    return;
+  }
+
+  const thinking = addChatMsg('assistant', 'Thinking...');
+  thinking.classList.add('thinking');
+  try{
+    const resp = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ messages: [...chatMessages], dealState: getDealState() })
+    });
+    const data = await resp.json();
+    if(!resp.ok) throw new Error(data.error||'API error');
+    thinking.remove();
+    addChatMsg('assistant', data.text);
+    if(data.action){
+      if(data.action.type==='SET_FIELD'){
+        const el=document.getElementById(data.action.field);
+        if(el){ el.value=data.action.value; render(); }
+      } else if(data.action.type==='EXPORT_PDF') exportPDF();
+    }
+  }catch(err){
+    thinking.remove();
+    addChatMsg('assistant', 'Error: '+err.message);
+  }
+}
+
+async function handleImprove(request){
+  const thinking = addChatMsg('assistant', '⚙️ Generating code improvement...');
+  thinking.classList.add('thinking');
+  try{
+    // Fetch current index.html source
+    const codeResp = await fetch(window.location.href);
+    const currentCode = await codeResp.text();
+
+    const resp = await fetch('/api/improve', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ request, currentCode, targetFile:'index.html' })
+    });
+    const data = await resp.json();
+    if(!resp.ok) throw new Error(data.error||'API error');
+
+    thinking.remove();
+
+    // Create download link
+    const blob = new Blob([data.modifiedCode], {type:'text/html'});
+    const url = URL.createObjectURL(blob);
+    const msgs = document.getElementById('chatMsgs');
+    const div = document.createElement('div');
+    div.className = 'chat-msg ai';
+    div.innerHTML = `✅ Code updated for: <em>${request}</em><br><br>
+      <a href="${url}" download="index.html" style="display:inline-block;background:var(--blue);color:#fff;padding:6px 14px;border-radius:6px;text-decoration:none;font-size:11px;font-weight:600;margin-top:4px">
+        ⬇ Download updated index.html
+      </a>
+      <div style="font-size:10px;color:var(--lbl3);margin-top:8px">Upload to GitHub → Vercel auto-deploys</div>`;
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+  }catch(err){
+    thinking.remove();
+    addChatMsg('assistant', 'Code generation failed: '+err.message);
+  }
+}
+
+function sendQuick(text){
+  document.getElementById('chatInput').value = text;
+  sendChat();
+}
+
+// ── PDF EXPORT ────────────────────────────────────────────────────────────────
+function exportPDF(){
+  window.print();
+}
+
+</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -152,6 +295,42 @@ input.bsf:focus{border-color:var(--blue);background:#fff}
 .ei{font-size:32px;margin-bottom:10px;opacity:.25}.et{font-size:13px;font-weight:600;color:var(--lbl2);margin-bottom:4px}.es{font-size:11px}
 
 @media(max-width:900px){.layout{flex-direction:column;height:auto}.left,.right{width:100%;position:static}}
+
+/* ── CHAT ──────────────────────────────────────────────────────────────────── */
+.chat-btn{position:fixed;bottom:24px;right:24px;width:52px;height:52px;background:var(--blue);border-radius:50%;border:none;cursor:pointer;box-shadow:0 4px 16px rgba(20,52,164,.35);display:flex;align-items:center;justify-content:center;z-index:300;transition:transform .2s}
+.chat-btn:hover{transform:scale(1.08)}
+.chat-btn svg{width:24px;height:24px;fill:#fff}
+
+.chat-panel{position:fixed;bottom:88px;right:24px;width:380px;height:520px;background:var(--surface);border-radius:var(--r);box-shadow:0 8px 32px rgba(0,0,0,.14);z-index:300;display:flex;flex-direction:column;overflow:hidden;transition:all .25s;transform-origin:bottom right}
+.chat-panel.hidden{transform:scale(0);opacity:0;pointer-events:none}
+.chat-header{background:var(--blue);padding:14px 16px;display:flex;align-items:center;justify-content:space-between}
+.chat-header-title{color:#fff;font-size:13px;font-weight:600}
+.chat-header-sub{color:rgba(255,255,255,.65);font-size:11px;margin-top:1px}
+.chat-close{background:none;border:none;color:rgba(255,255,255,.7);cursor:pointer;font-size:18px;line-height:1;padding:2px 4px}
+.chat-close:hover{color:#fff}
+.chat-msgs{flex:1;overflow-y:auto;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.chat-msg{max-width:88%;padding:9px 12px;border-radius:10px;font-size:12px;line-height:1.6}
+.chat-msg.user{background:var(--blue);color:#fff;align-self:flex-end;border-radius:10px 10px 2px 10px}
+.chat-msg.ai{background:var(--s2);color:var(--lbl);align-self:flex-start;border-radius:10px 10px 10px 2px;border:1px solid var(--sep2)}
+.chat-msg.ai.thinking{color:var(--lbl3);font-style:italic}
+.chat-input-row{border-top:1px solid var(--sep2);padding:10px 12px;display:flex;gap:8px;align-items:flex-end}
+.chat-input{flex:1;background:var(--bg);border:1px solid var(--sep);border-radius:8px;padding:8px 10px;font-size:12px;font-family:inherit;resize:none;outline:none;max-height:80px;line-height:1.5}
+.chat-input:focus{border-color:var(--blue)}
+.chat-send{background:var(--blue);border:none;border-radius:8px;width:34px;height:34px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.chat-send:hover{background:var(--blue2)}
+.chat-send svg{width:16px;height:16px;fill:#fff}
+.chat-actions{display:flex;gap:6px;padding:0 14px 10px;flex-wrap:wrap}
+.chat-pill{font-size:11px;color:var(--blue);background:var(--bl);border:1px solid rgba(20,52,164,.15);border-radius:20px;padding:4px 10px;cursor:pointer;white-space:nowrap}
+.chat-pill:hover{background:var(--blue);color:#fff}
+
+.export-btn{position:fixed;bottom:24px;right:88px;background:var(--surface);border:1px solid var(--sep);border-radius:8px;padding:10px 14px;font-size:12px;font-weight:600;color:var(--lbl2);cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.08);z-index:300;display:flex;align-items:center;gap:6px}
+.export-btn:hover{border-color:var(--blue);color:var(--blue)}
+
+@media print{
+  header,.left,.chat-btn,.chat-panel,.export-btn{display:none!important}
+  .right{width:100%!important;padding:20px!important}
+  .wfc{box-shadow:none!important;border:1px solid #ccc!important}
+}
 </style>
 </head>
 <body>
@@ -807,5 +986,43 @@ function resetAll(){
   $('rightPanel').innerHTML=`<div class="empty"><div class="ei">📋</div><div class="et">Upload an LOI to begin</div><div class="es">Or skip to enter manually</div></div>`;
 }
 </script>
+
+<!-- EXPORT BUTTON -->
+<button class="export-btn" onclick="exportPDF()">📄 Export PDF</button>
+
+<!-- CHAT BUTTON -->
+<button class="chat-btn" onclick="toggleChat()" title="Ask the AI assistant">
+  <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
+</button>
+
+<!-- CHAT PANEL -->
+<div class="chat-panel hidden" id="chatPanel">
+  <div class="chat-header">
+    <div>
+      <div class="chat-header-title">PPA Assistant</div>
+      <div class="chat-header-sub">Ask about calculations, request changes, export</div>
+    </div>
+    <button class="chat-close" onclick="toggleChat()">×</button>
+  </div>
+  <div class="chat-msgs" id="chatMsgs">
+    <div class="chat-msg ai">Hi! I can explain any calculation, help fill in missing values, or make changes. What would you like to know?</div>
+  </div>
+  <div class="chat-actions" id="chatPills">
+    <span class="chat-pill" onclick="sendQuick('Why is WC negative?')">Why is WC negative?</span>
+    <span class="chat-pill" onclick="sendQuick('Explain the DR adjustment')">Explain DR</span>
+    <span class="chat-pill" onclick="sendQuick('What adjustments am I missing?')">Missing adjustments?</span>
+    <span class="chat-pill" onclick="sendQuick('Export to PDF')">Export PDF</span>
+    <span class="chat-pill" onclick="sendQuick('Improve the UI to show a scenario comparison between two sets of assumptions')">Improve: scenario comparison</span>
+  </div>
+  <div class="chat-input-row">
+    <textarea class="chat-input" id="chatInput" placeholder="Ask anything about this deal..." rows="1"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat()}"
+      oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,80)+'px'"></textarea>
+    <button class="chat-send" onclick="sendChat()">
+      <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+    </button>
+  </div>
+</div>
+
 </body>
 </html>
