@@ -6,149 +6,6 @@
 <title>PPA Calculator — Trilogy</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js">
-// ── CHAT ──────────────────────────────────────────────────────────────────────
-let chatMessages = [];
-let chatOpen = false;
-
-function toggleChat(){
-  chatOpen = !chatOpen;
-  const panel = document.getElementById('chatPanel');
-  panel.classList.toggle('hidden', !chatOpen);
-  if(chatOpen) document.getElementById('chatInput').focus();
-}
-
-function getDealState(){
-  const basePP = n('basePP'), arr = n('validatedARR');
-  const wcCapPct = n('wcCapPct')||5, drThreshPct = n('drThreshPct')||50;
-  const netAR = n('wcNetAR'), empTerm = n('wcEmpTerm');
-  const lease = n('wcLease'), other = n('wcOther');
-  const tangWC = netAR - empTerm - lease - other;
-  const wcCap = arr * (wcCapPct/100);
-  const wcAdj = chk('wcEnabled') ? (tangWC > 0 ? Math.min(tangWC, wcCap) : tangWC) : 0;
-  const softDR = n('softDR'), nonSoftDR = n('nonSoftDR');
-  const drThresh = arr * (drThreshPct/100);
-  const softExcess = Math.max(0, softDR - drThresh);
-  const drAdj = chk('drEnabled') ? -(softExcess + nonSoftDR) : 0;
-  let dynTotal = 0;
-  dynamicMods.forEach(m => {
-    if(chk(m.id+'En')) dynTotal -= n(m.amtId) * (n(m.pctId)/100);
-  });
-  let custTotal = 0;
-  customAdjs.forEach(c => { const v = parseFloat(c.value)||0; custTotal += c.dir==='add'?v:-v; });
-  const netPP = basePP + wcAdj + drAdj + dynTotal + custTotal;
-  return {
-    dealName: vv('dealName'), buyerName: vv('buyerName'),
-    currency: (document.getElementById('dealCurrency')?.value)||'USD',
-    basePP, validatedARR: arr, wcCapPct, drThreshPct,
-    wcNetAR: netAR, wcEmpTerm: empTerm, wcLease: lease, wcOther: other,
-    tangibleWC: tangWC, wcCap, wcAdj,
-    softDR, nonSoftDR, drThresh, softExcess, drAdj,
-    netPP, delta: netPP - basePP,
-    customAdjustments: customAdjs,
-    dynamicModules: dynamicMods.map(m=>({title:m.title,amount:n(m.amtId),pct:n(m.pctId),enabled:chk(m.id+'En')}))
-  };
-}
-
-function addChatMsg(role, text){
-  chatMessages.push({role, content: text});
-  const msgs = document.getElementById('chatMsgs');
-  const div = document.createElement('div');
-  div.className = 'chat-msg ' + (role==='user'?'user':'ai');
-  div.textContent = text;
-  msgs.appendChild(div);
-  msgs.scrollTop = msgs.scrollHeight;
-  return div;
-}
-
-async function sendChat(){
-  const input = document.getElementById('chatInput');
-  const text = input.value.trim();
-  if(!text) return;
-  input.value = '';
-  input.style.height = 'auto';
-  document.getElementById('chatPills').style.display = 'none';
-  addChatMsg('user', text);
-
-  // Check if this is a code improvement request
-  const isImprove = /^\/improve\b|improve the (app|code|ui|calculation|logic)|add (a |an )?(feature|section|button|field)|change the (ui|design|layout|color|font)|remove |rename |fix the code/i.test(text);
-
-  if(isImprove){
-    await handleImprove(text);
-    return;
-  }
-
-  const thinking = addChatMsg('assistant', 'Thinking...');
-  thinking.classList.add('thinking');
-  try{
-    const resp = await fetch('/api/chat', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ messages: [...chatMessages], dealState: getDealState() })
-    });
-    const data = await resp.json();
-    if(!resp.ok) throw new Error(data.error||'API error');
-    thinking.remove();
-    addChatMsg('assistant', data.text);
-    if(data.action){
-      if(data.action.type==='SET_FIELD'){
-        const el=document.getElementById(data.action.field);
-        if(el){ el.value=data.action.value; render(); }
-      } else if(data.action.type==='EXPORT_PDF') exportPDF();
-    }
-  }catch(err){
-    thinking.remove();
-    addChatMsg('assistant', 'Error: '+err.message);
-  }
-}
-
-async function handleImprove(request){
-  const thinking = addChatMsg('assistant', '⚙️ Generating code improvement...');
-  thinking.classList.add('thinking');
-  try{
-    // Fetch current index.html source
-    const codeResp = await fetch(window.location.href);
-    const currentCode = await codeResp.text();
-
-    const resp = await fetch('/api/improve', {
-      method: 'POST',
-      headers: {'Content-Type':'application/json'},
-      body: JSON.stringify({ request, currentCode, targetFile:'index.html' })
-    });
-    const data = await resp.json();
-    if(!resp.ok) throw new Error(data.error||'API error');
-
-    thinking.remove();
-
-    // Create download link
-    const blob = new Blob([data.modifiedCode], {type:'text/html'});
-    const url = URL.createObjectURL(blob);
-    const msgs = document.getElementById('chatMsgs');
-    const div = document.createElement('div');
-    div.className = 'chat-msg ai';
-    div.innerHTML = `✅ Code updated for: <em>${request}</em><br><br>
-      <a href="${url}" download="index.html" style="display:inline-block;background:var(--blue);color:#fff;padding:6px 14px;border-radius:6px;text-decoration:none;font-size:11px;font-weight:600;margin-top:4px">
-        ⬇ Download updated index.html
-      </a>
-      <div style="font-size:10px;color:var(--lbl3);margin-top:8px">Upload to GitHub → Vercel auto-deploys</div>`;
-    msgs.appendChild(div);
-    msgs.scrollTop = msgs.scrollHeight;
-  }catch(err){
-    thinking.remove();
-    addChatMsg('assistant', 'Code generation failed: '+err.message);
-  }
-}
-
-function sendQuick(text){
-  document.getElementById('chatInput').value = text;
-  sendChat();
-}
-
-// ── PDF EXPORT ────────────────────────────────────────────────────────────────
-function exportPDF(){
-  window.print();
-}
-
-</script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -610,7 +467,9 @@ async function handleLOI(file){
     applyParsed(parsed);
     renderParseResult(parsed);
     $('uzTitle').textContent='✓ '+file.name;
+    uploadedFiles.loi = true;
     showMain();
+    checkAutoInsight();
   }catch(err){
     console.error(err);
     $('loiStatus').innerHTML=`<div style="font-size:12px;color:var(--red);background:var(--red-bg);border-radius:8px;padding:10px 14px;margin-top:10px;line-height:1.6">
@@ -701,8 +560,10 @@ async function handleARR(file){
       if(data.breakdown&&data.breakdown.length)
         lbl+=' ('+data.breakdown.map(b=>b.name+': '+sym+(b.amount/1e6).toFixed(1)+'M').join(', ')+')';
       $('arrLbl').textContent=lbl;
+      uploadedFiles.arr = true;
       updateCurrencyUI();
       render();
+      checkAutoInsight();
     }else{
       $('arrLbl').textContent='✓ '+file.name+' — ARR not found, enter manually';
     }
@@ -756,6 +617,8 @@ async function handleBS(file){
     $('bsTitle').textContent='✓ '+file.name+' (tab: '+tabName+')';
     $('bsStatus').innerHTML=`<div style="font-size:11px;color:var(--blue);margin-top:8px;font-weight:500">
       ✓ WC and Deferred Revenue auto-populated — edit below to override</div>`;
+    uploadedFiles.bs = true;
+    checkAutoInsight();
 
     // Show "· from BS" indicator
     const note=$('bsFeedNote');
@@ -979,12 +842,225 @@ function resetAll(){
   $('arrLbl').textContent='Upload ARR Report';
   const drn=document.getElementById('drFeedNote'); if(drn) drn.remove();
   bsSections=[]; customAdjs=[]; customId=0; dynamicMods=[];
-  loiHasHoldback=false; dealCurrency='USD'; const _cEl=document.getElementById('dealCurrency'); if(_cEl) _cEl.value='USD';
+  loiHasHoldback=false; dealCurrency='USD'; window._autoInsightDone=false; uploadedFiles={loi:false,bs:false,arr:false}; const _cEl=document.getElementById('dealCurrency'); if(_cEl) _cEl.value='USD';
   renderCustom(); renderDynamic();
   $('holdbackSection').style.display='none';
   $('mainContent').style.display='none';
   $('rightPanel').innerHTML=`<div class="empty"><div class="ei">📋</div><div class="et">Upload an LOI to begin</div><div class="es">Or skip to enter manually</div></div>`;
 }
+
+// ── CHAT ──────────────────────────────────────────────────────────────────────
+let chatMessages = [];
+let chatOpen = false;
+
+function checkAutoInsight(){
+  // Trigger when LOI + BS uploaded, or LOI + ARR at minimum
+  const hasCore = uploadedFiles.loi && (uploadedFiles.bs || uploadedFiles.arr);
+  if(!hasCore) return;
+  // Only trigger once
+  if(window._autoInsightDone) return;
+  window._autoInsightDone = true;
+  // Small delay to let render settle
+  setTimeout(()=>{
+    if(!chatOpen) toggleChat();
+    showInsightPopup();
+  }, 800);
+}
+
+async function showInsightPopup(){
+  // Show loading state with a distinct popup style
+  const msgs = document.getElementById('chatMsgs');
+
+  // Divider
+  const divider = document.createElement('div');
+  divider.style.cssText = 'display:flex;align-items:center;gap:8px;margin:8px 0';
+  divider.innerHTML = '<div style="flex:1;height:1px;background:var(--sep2)"></div><span style="font-size:10px;color:var(--lbl3);white-space:nowrap;font-weight:600">AUTO ANALYSIS</span><div style="flex:1;height:1px;background:var(--sep2)"></div>';
+  msgs.appendChild(divider);
+
+  const thinking = document.createElement('div');
+  thinking.className = 'chat-msg ai thinking';
+  thinking.innerHTML = '🔍 Analysing deal...';
+  msgs.appendChild(thinking);
+  msgs.scrollTop = msgs.scrollHeight;
+
+  try{
+    const state = getDealState();
+    const resp = await fetch('/api/chat', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        messages:[{
+          role:'user',
+          content:`All financial data has been uploaded. Give me your top 3-5 deal insights right now — risks, whether the price is fair, what adjustments look unusual, and what I should negotiate harder on. Be direct and specific to the numbers in front of you.`
+        }],
+        dealState: state
+      })
+    });
+    const data = await resp.json();
+    thinking.remove();
+
+    // Show as highlighted insight card
+    const card = document.createElement('div');
+    card.style.cssText = 'background:linear-gradient(135deg,#EBF0FD,#F5F7FF);border:1px solid rgba(20,52,164,.2);border-radius:10px;padding:12px 14px;font-size:12px;line-height:1.7;color:var(--lbl);margin:4px 0';
+    card.innerHTML = '<div style="font-size:10px;font-weight:700;color:var(--blue);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">📊 Deal Intelligence</div>' +
+      data.text.replace(/
+/g,'<br>');
+    msgs.appendChild(card);
+    msgs.scrollTop = msgs.scrollHeight;
+
+    // Store in chat history
+    chatMessages.push({role:'user', content:'Auto-analysis on file upload'});
+    chatMessages.push({role:'assistant', content: data.text});
+
+    // Pulse the chat button to draw attention
+    const btn = document.querySelector('.chat-btn');
+    if(btn){ btn.style.animation='none'; btn.style.boxShadow='0 0 0 4px rgba(20,52,164,.3)'; }
+
+  }catch(err){
+    thinking.remove();
+    addChatMsg('assistant','Auto-analysis failed: '+err.message);
+  }
+}
+
+function toggleChat(){
+  chatOpen = !chatOpen;
+  const panel = document.getElementById('chatPanel');
+  panel.classList.toggle('hidden', !chatOpen);
+  if(chatOpen) document.getElementById('chatInput').focus();
+}
+
+function getDealState(){
+  const basePP = n('basePP'), arr = n('validatedARR');
+  const wcCapPct = n('wcCapPct')||5, drThreshPct = n('drThreshPct')||50;
+  const netAR = n('wcNetAR'), empTerm = n('wcEmpTerm');
+  const lease = n('wcLease'), other = n('wcOther');
+  const tangWC = netAR - empTerm - lease - other;
+  const wcCap = arr * (wcCapPct/100);
+  const wcAdj = chk('wcEnabled') ? (tangWC > 0 ? Math.min(tangWC, wcCap) : tangWC) : 0;
+  const softDR = n('softDR'), nonSoftDR = n('nonSoftDR');
+  const drThresh = arr * (drThreshPct/100);
+  const softExcess = Math.max(0, softDR - drThresh);
+  const drAdj = chk('drEnabled') ? -(softExcess + nonSoftDR) : 0;
+  let dynTotal = 0;
+  dynamicMods.forEach(m => {
+    if(chk(m.id+'En')) dynTotal -= n(m.amtId) * (n(m.pctId)/100);
+  });
+  let custTotal = 0;
+  customAdjs.forEach(c => { const v = parseFloat(c.value)||0; custTotal += c.dir==='add'?v:-v; });
+  const netPP = basePP + wcAdj + drAdj + dynTotal + custTotal;
+  return {
+    dealName: vv('dealName'), buyerName: vv('buyerName'),
+    currency: (document.getElementById('dealCurrency')?.value)||'USD',
+    basePP, validatedARR: arr, wcCapPct, drThreshPct,
+    wcNetAR: netAR, wcEmpTerm: empTerm, wcLease: lease, wcOther: other,
+    tangibleWC: tangWC, wcCap, wcAdj,
+    softDR, nonSoftDR, drThresh, softExcess, drAdj,
+    netPP, delta: netPP - basePP,
+    customAdjustments: customAdjs,
+    dynamicModules: dynamicMods.map(m=>({title:m.title,amount:n(m.amtId),pct:n(m.pctId),enabled:chk(m.id+'En')}))
+  };
+}
+
+function addChatMsg(role, text){
+  chatMessages.push({role, content: text});
+  const msgs = document.getElementById('chatMsgs');
+  const div = document.createElement('div');
+  div.className = 'chat-msg ' + (role==='user'?'user':'ai');
+  div.textContent = text;
+  msgs.appendChild(div);
+  msgs.scrollTop = msgs.scrollHeight;
+  return div;
+}
+
+async function sendChat(){
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  if(!text) return;
+  input.value = '';
+  input.style.height = 'auto';
+  document.getElementById('chatPills').style.display = 'none';
+  addChatMsg('user', text);
+
+  // Check if this is a code improvement request
+  const isImprove = /^\/improve\b|improve the (app|code|ui|calculation|logic)|add (a |an )?(feature|section|button|field)|change the (ui|design|layout|color|font)|remove |rename |fix the code/i.test(text);
+
+  if(isImprove){
+    await handleImprove(text);
+    return;
+  }
+
+  const thinking = addChatMsg('assistant', 'Thinking...');
+  thinking.classList.add('thinking');
+  try{
+    const resp = await fetch('/api/chat', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ messages: [...chatMessages], dealState: getDealState() })
+    });
+    const data = await resp.json();
+    if(!resp.ok) throw new Error(data.error||'API error');
+    thinking.remove();
+    addChatMsg('assistant', data.text);
+    if(data.action){
+      if(data.action.type==='SET_FIELD'){
+        const el=document.getElementById(data.action.field);
+        if(el){ el.value=data.action.value; render(); }
+      } else if(data.action.type==='EXPORT_PDF') exportPDF();
+    }
+  }catch(err){
+    thinking.remove();
+    addChatMsg('assistant', 'Error: '+err.message);
+  }
+}
+
+async function handleImprove(request){
+  const thinking = addChatMsg('assistant', '⚙️ Generating code improvement...');
+  thinking.classList.add('thinking');
+  try{
+    // Fetch current index.html source
+    const codeResp = await fetch(window.location.href);
+    const currentCode = await codeResp.text();
+
+    const resp = await fetch('/api/improve', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ request, currentCode, targetFile:'index.html' })
+    });
+    const data = await resp.json();
+    if(!resp.ok) throw new Error(data.error||'API error');
+
+    thinking.remove();
+
+    // Create download link
+    const blob = new Blob([data.modifiedCode], {type:'text/html'});
+    const url = URL.createObjectURL(blob);
+    const msgs = document.getElementById('chatMsgs');
+    const div = document.createElement('div');
+    div.className = 'chat-msg ai';
+    div.innerHTML = `✅ Code updated for: <em>${request}</em><br><br>
+      <a href="${url}" download="index.html" style="display:inline-block;background:var(--blue);color:#fff;padding:6px 14px;border-radius:6px;text-decoration:none;font-size:11px;font-weight:600;margin-top:4px">
+        ⬇ Download updated index.html
+      </a>
+      <div style="font-size:10px;color:var(--lbl3);margin-top:8px">Upload to GitHub → Vercel auto-deploys</div>`;
+    msgs.appendChild(div);
+    msgs.scrollTop = msgs.scrollHeight;
+  }catch(err){
+    thinking.remove();
+    addChatMsg('assistant', 'Code generation failed: '+err.message);
+  }
+}
+
+function sendQuick(text){
+  document.getElementById('chatInput').value = text;
+  sendChat();
+}
+
+// ── PDF EXPORT ────────────────────────────────────────────────────────────────
+function exportPDF(){
+  window.print();
+}
+
+
 </script>
 
 <!-- EXPORT BUTTON -->
@@ -1005,14 +1081,15 @@ function resetAll(){
     <button class="chat-close" onclick="toggleChat()">×</button>
   </div>
   <div class="chat-msgs" id="chatMsgs">
-    <div class="chat-msg ai">Hi! I can explain any calculation, help fill in missing values, or make changes. What would you like to know?</div>
+    <div class="chat-msg ai">Senior M&A analyst here. Upload your LOI and financials, then ask me anything — deal risks, negotiation strategy, whether the multiple is fair, or what adjustments you're missing.</div>
   </div>
   <div class="chat-actions" id="chatPills">
-    <span class="chat-pill" onclick="sendQuick('Why is WC negative?')">Why is WC negative?</span>
-    <span class="chat-pill" onclick="sendQuick('Explain the DR adjustment')">Explain DR</span>
-    <span class="chat-pill" onclick="sendQuick('What adjustments am I missing?')">Missing adjustments?</span>
+    <span class="chat-pill" onclick="sendQuick('Review this deal — flag any risks or red flags')">🚨 Flag risks</span>
+    <span class="chat-pill" onclick="sendQuick('Is the EV/ARR multiple fair for this type of business?')">EV/ARR multiple</span>
+    <span class="chat-pill" onclick="sendQuick('What adjustments am I missing that are standard for software deals?')">Missing adjustments</span>
+    <span class="chat-pill" onclick="sendQuick('Where will the seller push back in negotiations?')">Negotiation intel</span>
+    <span class="chat-pill" onclick="sendQuick('What is the downside scenario if ARR comes in 20% below validation?')">Downside scenario</span>
     <span class="chat-pill" onclick="sendQuick('Export to PDF')">Export PDF</span>
-    <span class="chat-pill" onclick="sendQuick('Improve the UI to show a scenario comparison between two sets of assumptions')">Improve: scenario comparison</span>
   </div>
   <div class="chat-input-row">
     <textarea class="chat-input" id="chatInput" placeholder="Ask anything about this deal..." rows="1"
