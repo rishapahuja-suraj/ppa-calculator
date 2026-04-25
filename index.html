@@ -218,6 +218,34 @@ input.bsf:focus{border-color:var(--blue);background:#fff}
 .ins-txt strong{color:var(--lbl);font-weight:600}
 .ins-txt .dim{color:var(--lbl3)}
 .ins-section-lbl{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--lbl3);margin:10px 0 6px}
+
+.upload-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:7px;margin-bottom:8px}
+.uc{background:#FAFAF8;border:1.5px solid #C8C5BE;border-radius:9px;padding:10px 11px;cursor:pointer;transition:border-color .15s}
+.uc.wait{border-style:dashed}
+.uc.done{border-color:#97C459}
+.uc.proc{border-color:#1434A4;background:#F5F8FE}
+.uc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}
+.uc-left{display:flex;align-items:center;gap:7px}
+.uc-ic{width:24px;height:24px;border-radius:5px;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:background .2s}
+.uc-ic.grn{background:#EAF3DE}.uc-ic.blue{background:#E6F1FB}.uc-ic.amb{background:#FAEEDA}.uc-ic.navy{background:#1434A4}
+.uc-title{font-size:11px;font-weight:500;color:var(--color-text-primary)}
+.uc-ver{font-size:9px;font-weight:700;padding:1px 5px;border-radius:4px;background:#1434A4;color:#fff;margin-left:4px;letter-spacing:.03em}
+.uc-bdg{font-size:9px;font-weight:500;padding:1px 6px;border-radius:20px}
+.bdg-wait{background:#F2F0EB;color:#888780;border:1px solid #C8C5BE}
+.bdg-done{background:#EAF3DE;color:#27500A;border:1px solid #C0DD97}
+.bdg-proc{background:#E6F1FB;color:#0C447C;border:1px solid #B5D4F4}
+.uc-hint{font-size:10px;color:var(--color-text-secondary);margin-bottom:5px;line-height:1.4}
+.uc-vals{font-size:10px;color:var(--color-text-secondary);line-height:1.5;margin-bottom:5px}
+.uc-vals strong{color:var(--color-text-primary);font-weight:500}
+.uc-proc-lbl{font-size:10px;color:#0C447C;margin-bottom:3px}
+.uc-prog{height:3px;background:#D0DCFA;border-radius:3px;margin-bottom:5px;overflow:hidden}
+.uc-prog-fill{height:100%;border-radius:3px;background:#1434A4;transition:width .3s}
+.uc-prog-fill.ind{width:40%;animation:ucind 1.2s ease-in-out infinite}
+@keyframes ucind{0%{transform:translateX(-150%)}100%{transform:translateX(400%)}}
+.uc-btn{width:100%;padding:4px;border-radius:5px;font-size:10px;text-align:center;cursor:pointer;font-weight:500;border:none;font-family:inherit}
+.uc-btn.rpl{background:#F2F0EB;border:1px solid #C8C5BE;color:#5F5E5A}
+.uc-btn.up{background:#1434A4;color:#fff}
+.uc-btn.dim{opacity:.4;pointer-events:none;background:#F2F0EB;border:1px solid #C8C5BE;color:#888}
 </style>
 </head>
 <body>
@@ -264,23 +292,62 @@ input.bsf:focus{border-color:var(--blue);background:#fff}
 <div class="layout">
 <div class="left">
 
-  <!-- STEP 1: LOI -->
+  <!-- STEP 1: UPLOAD CARDS -->
   <div style="margin-bottom:14px">
-    <div class="slbl">Step 1 — Letter of Intent</div>
-    <div class="card">
-      <div class="cb op" style="padding:14px">
-        <div class="uz" id="uZone" onclick="document.getElementById('loiFile').click()"
-          ondragover="event.preventDefault();this.classList.add('drag')"
-          ondragleave="this.classList.remove('drag')" ondrop="loiDrop(event)">
-          <input type="file" id="loiFile" accept=".pdf,.txt" onchange="handleLOI(this.files[0])"/>
-          <div class="uzi">📄</div>
-          <div class="uzt" id="uzTitle">Upload LOI (PDF or TXT)</div>
-          <div class="uzs">All fields auto-populate on upload — fully editable</div>
+    <div class="slbl">Documents</div>
+    <div class="upload-grid">
+      <!-- LOI CARD -->
+      <div class="uc wait" id="ucLOI" onclick="document.getElementById('loiFile').click()">
+        <input type="file" id="loiFile" accept=".pdf,.txt" style="display:none" onchange="handleLOI(this.files[0])"/>
+        <div class="uc-top">
+          <div class="uc-left">
+            <div class="uc-ic blue" id="ucLOIic"><svg width="12" height="12" viewBox="0 0 24 24" fill="#0C447C"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg></div>
+            <span class="uc-title">Letter of Intent<span class="uc-ver" id="ucLOIver" style="display:none"></span></span>
+          </div>
+          <span class="uc-bdg bdg-wait" id="ucLOIbdg">Awaiting</span>
         </div>
-        <div style="text-align:center"><span class="sl" onclick="skipLOI()">Skip — enter manually</span></div>
-        <div id="loiStatus"></div>
+        <div class="uc-hint" id="ucLOIhint">PDF or TXT · PP, ARR, WC cap, DR threshold</div>
+        <div class="uc-vals" id="ucLOIvals" style="display:none"></div>
+        <div class="uc-proc-lbl" id="ucLOIproclbl" style="display:none"></div>
+        <div class="uc-prog" id="ucLOIprog" style="display:none"><div class="uc-prog-fill" id="ucLOIprogfill"></div></div>
+        <div id="loiStatus" style="display:none"></div>
+        <button class="uc-btn up" id="ucLOIbtn" onclick="event.stopPropagation();document.getElementById('loiFile').click()">Upload</button>
+      </div>
+      <!-- ARR CARD -->
+      <div class="uc wait" id="ucARR" onclick="document.getElementById('arrFile').click()">
+        <input type="file" id="arrFile" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleARR(this.files[0])"/>
+        <div class="uc-top">
+          <div class="uc-left">
+            <div class="uc-ic amb" id="ucARRic"><svg width="12" height="12" viewBox="0 0 24 24" fill="#633806"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3l5 5h-3v4h-4v-4H7l5-5z"/></svg></div>
+            <span class="uc-title">ARR Report<span class="uc-ver" id="ucARRver" style="display:none"></span></span>
+          </div>
+          <span class="uc-bdg bdg-wait" id="ucARRbdg">Awaiting</span>
+        </div>
+        <div class="uc-hint" id="ucARRhint">CSV or XLSX · validated in-force ARR</div>
+        <div class="uc-vals" id="ucARRvals" style="display:none"></div>
+        <div class="uc-proc-lbl" id="ucARRproclbl" style="display:none"></div>
+        <div class="uc-prog" id="ucARRprog" style="display:none"><div class="uc-prog-fill" id="ucARRprogfill"></div></div>
+        <button class="uc-btn up" id="ucARRbtn" onclick="event.stopPropagation();document.getElementById('arrFile').click()">Upload</button>
+      </div>
+      <!-- BS CARD -->
+      <div class="uc wait" id="ucBS" onclick="document.getElementById('bsFile').click()">
+        <input type="file" id="bsFile" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleBS(this.files[0])"/>
+        <div class="uc-top">
+          <div class="uc-left">
+            <div class="uc-ic blue" id="ucBSic"><svg width="12" height="12" viewBox="0 0 24 24" fill="#0C447C"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg></div>
+            <span class="uc-title">Balance Sheet<span class="uc-ver" id="ucBSver" style="display:none"></span></span>
+          </div>
+          <span class="uc-bdg bdg-wait" id="ucBSbdg">Awaiting</span>
+        </div>
+        <div class="uc-hint" id="ucBShint">XLSX · AI reads WC + DR split</div>
+        <div class="uc-vals" id="ucBSvals" style="display:none"></div>
+        <div class="uc-proc-lbl" id="ucBSproclbl" style="display:none"></div>
+        <div class="uc-prog" id="ucBSprog" style="display:none"><div class="uc-prog-fill" id="ucBSprogfill"></div></div>
+        <div id="bsStatus" style="display:none"></div>
+        <button class="uc-btn up" id="ucBSbtn" onclick="event.stopPropagation();document.getElementById('bsFile').click()">Upload</button>
       </div>
     </div>
+    <div style="text-align:center;margin-top:2px"><span class="sl" onclick="skipLOI()">Skip — enter manually</span></div>
   </div>
 
   <!-- MAIN CONTENT -->
@@ -302,15 +369,7 @@ input.bsf:focus{border-color:var(--blue);background:#fff}
               <div class="ir"><span class="px2">$</span><input type="number" class="f" id="validatedARR" placeholder="0" oninput="render()"/></div>
             </div>
           </div>
-          <!-- ARR Upload -->
-          <div class="arr-chip" onclick="document.getElementById('arrFile').click()">
-            <input type="file" id="arrFile" accept=".csv,.xlsx,.xls" onchange="handleARR(this.files[0])"/>
-            <div class="arr-icon">📊</div>
-            <div>
-              <div class="arr-lbl" id="arrLbl">Upload ARR Report</div>
-              <div class="arr-sub">CSV or XLSX · Extracts Validated ARR automatically</div>
-            </div>
-          </div>
+          
           <input type="hidden" id="dealCurrency" value="USD"/>
           <div id="derivedRow" style="margin-top:10px"></div>
         </div>
@@ -331,19 +390,7 @@ input.bsf:focus{border-color:var(--blue);background:#fff}
         <span class="chev op" id="chev-wc">▾</span>
       </div>
       <div class="cb op" id="body-wc">
-        <!-- Balance Sheet Upload - feeds WC and DR automatically -->
-        <div style="margin-bottom:14px">
-          <div class="uz" style="padding:12px" id="bsZone"
-            onclick="document.getElementById('bsFile').click()"
-            ondragover="event.preventDefault();this.classList.add('drag')"
-            ondragleave="this.classList.remove('drag')" ondrop="bsDrop(event)">
-            <input type="file" id="bsFile" accept=".csv,.xlsx,.xls" onchange="handleBS(this.files[0])"/>
-            <div class="uzi" style="font-size:16px">📊</div>
-            <div class="uzt" style="font-size:12px" id="bsTitle">Upload Balance Sheet (XLSX / CSV)</div>
-            <div class="uzs">AI extracts Working Capital + Deferred Revenue split automatically</div>
-          </div>
-          <div id="bsStatus"></div>
-        </div>
+        
 
         <div style="font-size:11px;color:var(--lbl3);margin-bottom:12px;line-height:1.6">
           Tangible WC = Net AR − Assumed Liabilities &nbsp;·&nbsp; Increases capped at <strong id="wcCapLabel">5%</strong> of ARR
@@ -492,11 +539,11 @@ function loiDrop(e){ e.preventDefault(); $('uZone').classList.remove('drag'); ha
 
 async function handleLOI(file){
   if(!file) return;
-  $('loiStatus').innerHTML='<div class="proc"><div class="spinner"></div>Reading LOI...</div>';
+  ucSetProc('LOI','Reading LOI');
   try{
     const text = file.name.toLowerCase().endsWith('.pdf')||file.type==='application/pdf'
       ? await extractPDF(file) : await file.text();
-    $('loiStatus').innerHTML='<div class="proc"><div class="spinner"></div>Extracting with AI...</div>';
+    ucSetProc('LOI','Extracting');
     const resp = await fetch('/api/parse-loi',{
       method:'POST', headers:{'Content-Type':'application/json'},
       body:JSON.stringify({text})
@@ -524,7 +571,11 @@ async function handleLOI(file){
 
     applyParsed(parsed);
     renderParseResult(parsed);
-    $('uzTitle').textContent='✓ '+file.name;
+    const loiVals = [];
+    if(parsed.basePP) loiVals.push('<strong>'+currSym()+(parsed.basePP/1e6).toFixed(2)+'M</strong> PP');
+    if(parsed.wcCapPct) loiVals.push('<strong>'+parsed.wcCapPct+'%</strong> WC cap');
+    if(parsed.hasHoldback) loiVals.push('Holdback');
+    ucSetDone('LOI', loiVals.join(' · ')||'Fields extracted');
     uploadedFiles.loi = true;
     const pLOI=document.getElementById('pillLOI');if(pLOI){pLOI.textContent='LOI uploaded';pLOI.className='hdr-pill done';}
     const hv=document.getElementById('hdrVal');if(hv&&n('basePP'))hv.textContent='$'+(n('basePP')/1e6).toFixed(2)+'M';
@@ -532,10 +583,7 @@ async function handleLOI(file){
     checkAutoInsight();
   }catch(err){
     console.error(err);
-    $('loiStatus').innerHTML=`<div style="font-size:12px;color:var(--red);background:var(--red-bg);border-radius:8px;padding:10px 14px;margin-top:10px;line-height:1.6">
-      <strong>AI extraction failed</strong><br>${err.message}<br>
-      <span style="color:var(--lbl3);font-size:11px">Enter details manually below.</span>
-    </div>`;
+    ucSetWait('LOI'); alert('LOI extraction failed: '+err.message);
     showMain();
   }
 }
@@ -596,7 +644,7 @@ function showMain(){ $('mainContent').style.display='block'; $('rightPanel').inn
 // ── ARR UPLOAD ────────────────────────────────────────────────────────────────
 async function handleARR(file){
   if(!file) return;
-  $('arrLbl').textContent='Extracting with AI...';
+  ucSetProc('ARR','Extracting');
   try{
     const ab=await file.arrayBuffer();
     let rows=[], tabName='';
@@ -619,7 +667,8 @@ async function handleARR(file){
       let lbl='✓ '+file.name+' — ARR: '+sym+(data.validatedARR/1e6).toFixed(2)+'M';
       if(data.breakdown&&data.breakdown.length)
         lbl+=' ('+data.breakdown.map(b=>b.name+': '+sym+(b.amount/1e6).toFixed(1)+'M').join(', ')+')';
-      $('arrLbl').textContent=lbl;
+      const sym2=data.currency==='GBP'?'\u00a3':data.currency==='EUR'?'\u20ac':'$';
+      ucSetDone('ARR','Validated <strong>'+sym2+(data.validatedARR/1e6).toFixed(2)+'M</strong> ARR');
       uploadedFiles.arr = true;
     const pARR=document.getElementById('pillARR');if(pARR){pARR.textContent='ARR loaded';pARR.className='hdr-pill done';}
       updateCurrencyUI();
@@ -628,7 +677,7 @@ async function handleARR(file){
     }else{
       $('arrLbl').textContent='✓ '+file.name+' — ARR not found, enter manually';
     }
-  }catch(e){ $('arrLbl').textContent='AI extraction failed: '+e.message; }
+  }catch(e){ ucSetWait('ARR'); alert('ARR extraction failed: '+e.message); }
 }
 
 // ── BALANCE SHEET UPLOAD ──────────────────────────────────────────────────────
@@ -636,7 +685,7 @@ function bsDrop(e){ e.preventDefault(); $('bsZone').classList.remove('drag'); ha
 
 async function handleBS(file){
   if(!file) return;
-  $('bsStatus').innerHTML='<div class="proc"><div class="spinner"></div>Reading file...</div>';
+  ucSetProc('BS','Reading file');
   try{
     const ab=await file.arrayBuffer();
     let rows=[], tabName='';
@@ -654,7 +703,7 @@ async function handleBS(file){
       tabName=tab;
       rows=XLSX.utils.sheet_to_json(wb.Sheets[tab],{header:1,defval:''});
     }
-    $('bsStatus').innerHTML='<div class="proc"><div class="spinner"></div>Extracting with AI (tab: '+tabName+')...</div>';
+    ucSetProc('BS','Extracting');
     const resp=await fetch('/api/parse-bs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rows,sheetName:tabName})});
     const data=await resp.json();
     if(!resp.ok) throw new Error(data.error||'API error '+resp.status);
@@ -675,9 +724,11 @@ async function handleBS(file){
     if(dr.software&&$('softDR'))   $('softDR').value=Math.round(dr.software);
     if(dr.services&&$('nonSoftDR'))$('nonSoftDR').value=Math.round(dr.services);
 
-    $('bsTitle').textContent='✓ '+file.name+' (tab: '+tabName+')';
-    $('bsStatus').innerHTML=`<div style="font-size:11px;color:var(--blue);margin-top:8px;font-weight:500">
-      ✓ WC and Deferred Revenue auto-populated — edit below to override</div>`;
+    const wcNet = data.wcAssets||0, wcLib = data.wcLiabilities||0;
+    const wc = Math.round((wcNet-wcLib)/1000);
+    const drTot = Math.round(((data.deferredRevenue&&data.deferredRevenue.total)||0)/1000);
+    const sym3 = currSym();
+    ucSetDone('BS','WC <strong>'+sym3+(wc>=0?'+':'')+wc+'K</strong> · DR <strong>'+sym3+drTot+'K</strong>');
     uploadedFiles.bs = true;
     const pBS=document.getElementById('pillBS');if(pBS){pBS.textContent='Balance sheet loaded';pBS.className='hdr-pill done';}
     checkAutoInsight();
@@ -698,8 +749,7 @@ async function handleBS(file){
     render();
   }catch(err){
     console.error(err);
-    $('bsStatus').innerHTML=`<div style="font-size:12px;color:var(--red);background:var(--red-bg);border-radius:8px;padding:10px 14px;margin-top:8px;line-height:1.6">
-      <strong>AI extraction failed</strong><br>${err.message}</div>`;
+    ucSetWait('BS'); alert('Balance sheet extraction failed: '+err.message);
   }
 }
 
@@ -762,7 +812,7 @@ function buildRight(){
       <span class="ins-badge pending" id="insBadge">Awaiting data</span>
     </div>
     <div id="insightContent">
-      <div class="ins-waiting">Upload LOI, balance sheet and ARR report<br>to generate BlackRock-level deal analysis.</div>
+      <div class="ins-waiting">Upload LOI, balance sheet and ARR report<br>to generate deal insights.</div>
     </div>
   </div>
   <div id="hbCard" style="display:none">
@@ -913,9 +963,11 @@ function resetAll(){
   $('arrLbl').textContent='Upload ARR Report';
   const drn=document.getElementById('drFeedNote'); if(drn) drn.remove();
   bsSections=[]; customAdjs=[]; customId=0; dynamicMods=[];
-  loiHasHoldback=false; dealCurrency='USD'; window._autoInsightDone=false; uploadedFiles={loi:false,bs:false,arr:false};
+  loiHasHoldback=false; dealCurrency='USD'; window._autoInsightDone=false;
+  fileVersions={loi:0,arr:0,bs:0};
+  ['LOI','ARR','BS'].forEach(id=>ucSetWait(id)); uploadedFiles={loi:false,bs:false,arr:false};
   ['pillLOI','pillBS','pillARR'].forEach((id,i)=>{const el=document.getElementById(id);if(el){el.className='hdr-pill';el.textContent=['Awaiting LOI','Awaiting balance sheet','Awaiting ARR'][i];}});
-  const ib=document.getElementById('insightContent');if(ib)ib.innerHTML='<div class="ins-waiting">Upload LOI, balance sheet and ARR report<br>to generate BlackRock-level deal analysis.</div>';
+  const ib=document.getElementById('insightContent');if(ib)ib.innerHTML='<div class="ins-waiting">Upload LOI, balance sheet and ARR report<br>to generate deal insights.</div>';
   const ibadge=document.getElementById('insBadge');if(ibadge){ibadge.textContent='Awaiting data';ibadge.className='ins-badge pending';} const _cEl=document.getElementById('dealCurrency'); if(_cEl) _cEl.value='USD';
   renderCustom(); renderDynamic();
   $('holdbackSection').style.display='none';
@@ -1021,6 +1073,66 @@ function populateInsightBox(text){
     html+=`<div class="ins-item"><div class="ins-dot ${dotColor(clean)}"></div><div class="ins-txt">${clean}</div></div>`;
   });
   box.innerHTML=html||'<div class="ins-waiting">Analysis complete.</div>';
+}
+
+
+// ── UPLOAD CARD STATE HELPERS ─────────────────────────────────────────────────
+function ucSetProc(id, label){
+  const card = document.getElementById('uc'+id);
+  if(!card) return;
+  card.className = 'uc proc';
+  document.getElementById('uc'+id+'bdg').textContent = label;
+  document.getElementById('uc'+id+'bdg').className = 'uc-bdg bdg-proc';
+  document.getElementById('uc'+id+'ic').className = 'uc-ic navy';
+  document.getElementById('uc'+id+'hint').style.display = 'none';
+  document.getElementById('uc'+id+'vals').style.display = 'none';
+  document.getElementById('uc'+id+'proclbl').style.display = 'block';
+  document.getElementById('uc'+id+'proclbl').textContent = label+'...';
+  document.getElementById('uc'+id+'prog').style.display = 'block';
+  document.getElementById('uc'+id+'progfill').className = 'uc-prog-fill ind';
+  document.getElementById('uc'+id+'btn').className = 'uc-btn dim';
+  document.getElementById('uc'+id+'btn').textContent = 'Please wait';
+}
+
+function ucSetDone(id, vals, icColor){
+  fileVersions[id.toLowerCase()]++;
+  const v = fileVersions[id.toLowerCase()];
+  const card = document.getElementById('uc'+id);
+  if(!card) return;
+  card.className = 'uc done';
+  document.getElementById('uc'+id+'bdg').textContent = 'Done';
+  document.getElementById('uc'+id+'bdg').className = 'uc-bdg bdg-done';
+  const ic = document.getElementById('uc'+id+'ic');
+  ic.className = 'uc-ic grn';
+  // Green checkmark icon
+  ic.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="#27500A"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>';
+  document.getElementById('uc'+id+'hint').style.display = 'none';
+  document.getElementById('uc'+id+'proclbl').style.display = 'none';
+  document.getElementById('uc'+id+'prog').style.display = 'none';
+  const valsEl = document.getElementById('uc'+id+'vals');
+  valsEl.innerHTML = vals;
+  valsEl.style.display = 'block';
+  const verEl = document.getElementById('uc'+id+'ver');
+  verEl.textContent = 'V'+v;
+  verEl.style.display = 'inline';
+  const btn = document.getElementById('uc'+id+'btn');
+  btn.className = 'uc-btn rpl';
+  btn.textContent = 'Replace → V'+(v+1);
+}
+
+function ucSetWait(id){
+  const card = document.getElementById('uc'+id);
+  if(!card) return;
+  card.className = 'uc wait';
+  document.getElementById('uc'+id+'bdg').textContent = 'Awaiting';
+  document.getElementById('uc'+id+'bdg').className = 'uc-bdg bdg-wait';
+  document.getElementById('uc'+id+'prog').style.display = 'none';
+  document.getElementById('uc'+id+'proclbl').style.display = 'none';
+  document.getElementById('uc'+id+'vals').style.display = 'none';
+  document.getElementById('uc'+id+'ver').style.display = 'none';
+  document.getElementById('uc'+id+'hint').style.display = 'block';
+  document.getElementById('uc'+id+'btn').className = 'uc-btn up';
+  document.getElementById('uc'+id+'btn').textContent = 'Upload';
 }
 
 function toggleChat(){
@@ -1182,7 +1294,7 @@ function exportPDF(){
     <button class="chat-close" onclick="toggleChat()">×</button>
   </div>
   <div class="chat-msgs" id="chatMsgs">
-    <div class="chat-msg ai">Senior M&A analyst here. Upload your LOI and financials, then ask me anything — deal risks, negotiation strategy, whether the multiple is fair, or what adjustments you're missing.</div>
+    <div class="chat-msg ai">Senior M&A analyst here. Upload your deal files, then ask me anything — deal risks, negotiation strategy, whether the multiple is fair, or what adjustments you're missing.</div>
   </div>
   <div class="chat-actions" id="chatPills">
     <span class="chat-pill" onclick="sendQuick('Review this deal — flag any risks or red flags')">🚨 Flag risks</span>
