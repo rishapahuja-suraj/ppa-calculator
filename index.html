@@ -903,8 +903,7 @@ async function showInsightPopup(){
     const card = document.createElement('div');
     card.style.cssText = 'background:linear-gradient(135deg,#EBF0FD,#F5F7FF);border:1px solid rgba(20,52,164,.2);border-radius:10px;padding:12px 14px;font-size:12px;line-height:1.7;color:var(--lbl);margin:4px 0';
     card.innerHTML = '<div style="font-size:10px;font-weight:700;color:var(--blue);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">📊 Deal Intelligence</div>' +
-      data.text.replace(/
-/g,'<br>');
+      data.text.replace(/\n/g,'<br>');
     msgs.appendChild(card);
     msgs.scrollTop = msgs.scrollHeight;
 
