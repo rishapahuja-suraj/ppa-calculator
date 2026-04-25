@@ -23,17 +23,17 @@ body{background:var(--bg);color:var(--lbl);font-family:'Inter',sans-serif;-webki
 input[type=number]{-moz-appearance:textfield}
 input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none}
 
-header{background:var(--surface);border-bottom:1px solid var(--sep2);padding:14px 28px 16px;display:flex;align-items:flex-end;justify-content:space-between}
+header{background:#1434A4;border-bottom:none;padding:14px 22px 14px;display:flex;align-items:center;justify-content:space-between;position:relative;overflow:hidden;min-height:88px}
 .brand{display:flex;align-items:center;gap:14px}
-.logo{width:42px;height:42px;background:var(--blue);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;font-family:'Playfair Display',serif;font-size:20px;font-weight:800}
-.title{font-family:'Playfair Display',serif;font-size:24px;font-weight:800;background:linear-gradient(120deg,#1434A4,#2649C8 55%,#5271D8);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1.1}
-.credit{font-size:11px;color:var(--lbl3);margin-top:3px}.credit b{color:var(--bm);font-weight:500}
+.logo{width:34px;height:34px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.25);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;color:#fff;font-family:'Playfair Display',serif;font-size:16px;font-weight:800}
+.title{font-family:'Playfair Display',serif;font-size:18px;font-weight:800;color:#fff;line-height:1.1}
+.credit{font-size:11px;color:rgba(255,255,255,.55);margin-top:2px}.credit b{color:rgba(255,255,255,.75);font-weight:500}
 .rbtn{font-size:12px;color:var(--lbl3);background:none;border:1px solid var(--sep);border-radius:6px;padding:5px 12px;cursor:pointer;font-weight:500}
 .rbtn:hover{background:var(--bg)}
 
 .layout{display:flex;height:calc(100vh - 73px)}
-.left{width:62%;padding:18px 22px;overflow-y:auto;border-right:1px solid var(--sep2)}
-.right{width:38%;padding:18px 18px;overflow-y:auto;background:var(--bg)}
+.left{width:50%;padding:16px 18px;overflow-y:auto;border-right:1.5px solid #C8C5BE;background:#F2F0EB}
+.right{width:50%;padding:16px 18px;overflow-y:auto;background:#F2F0EB}
 
 .slbl{font-size:10px;font-weight:700;color:var(--blue);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
 
@@ -188,6 +188,36 @@ input.bsf:focus{border-color:var(--blue);background:#fff}
   .right{width:100%!important;padding:20px!important}
   .wfc{box-shadow:none!important;border:1px solid #ccc!important}
 }
+
+.hdr-left{flex:1;z-index:2}
+.hdr-chart-wrap{z-index:1;opacity:.9;margin-right:12px}
+.hdr-pills{display:flex;flex-wrap:wrap;gap:5px}
+.hdr-pill{font-size:10px;padding:2px 9px;border-radius:20px;background:rgba(255,255,255,.12);color:rgba(255,255,255,.65);border:1px solid rgba(255,255,255,.18);font-weight:500}
+.hdr-pill.done{background:rgba(100,200,120,.22);color:#9FE1CB;border-color:rgba(100,200,120,.3)}
+.rbtn{font-size:11px;padding:5px 12px;border:1px solid rgba(255,255,255,.3);border-radius:6px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.75);cursor:pointer;z-index:2;flex-shrink:0}
+.card{background:#FAFAF8;border:1.5px solid #C8C5BE;border-radius:10px;padding:12px 14px;margin-bottom:8px}
+.ch{background:#FAFAF8;border:1.5px solid #C8C5BE}
+.ir .px2{color:var(--lbl2)}
+.insight-box{background:#FAFAF8;border:1.5px solid #C8C5BE;border-radius:10px;padding:13px 14px;margin-top:8px}
+.ins-hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #E5E2DC}
+.ins-label{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#1434A4}
+.ins-badge{font-size:9px;padding:2px 7px;border-radius:20px;font-weight:500}
+.ins-badge.pending{background:#F2F0EB;color:#888780;border:1px solid #C8C5BE}
+.ins-badge.ready{background:#EAF3DE;color:#27500A;border:1px solid #C0DD97}
+.ins-waiting{font-size:11px;color:var(--lbl3);text-align:center;padding:12px 0;line-height:1.7}
+.ins-item{display:flex;gap:9px;margin-bottom:8px;align-items:flex-start}
+.ins-item:last-child{margin-bottom:0}
+.ins-dot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.ins-dot.red{background:#E24B4A}
+.ins-dot.amber{background:#BA7517}
+.ins-dot.green{background:#639922}
+.ins-dot.blue{background:#1434A4}
+.ins-dot.gray{background:#888780}
+.ins-sep{height:1px;background:#E5E2DC;margin:7px 0}
+.ins-txt{font-size:11px;color:var(--lbl);line-height:1.65}
+.ins-txt strong{color:var(--lbl);font-weight:600}
+.ins-txt .dim{color:var(--lbl3)}
+.ins-section-lbl{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--lbl3);margin:10px 0 6px}
 </style>
 </head>
 <body>
@@ -468,6 +498,8 @@ async function handleLOI(file){
     renderParseResult(parsed);
     $('uzTitle').textContent='✓ '+file.name;
     uploadedFiles.loi = true;
+    const pLOI=document.getElementById('pillLOI');if(pLOI){pLOI.textContent='LOI uploaded';pLOI.className='hdr-pill done';}
+    const hv=document.getElementById('hdrVal');if(hv&&n('basePP'))hv.textContent='$'+(n('basePP')/1e6).toFixed(2)+'M';
     showMain();
     checkAutoInsight();
   }catch(err){
@@ -561,6 +593,7 @@ async function handleARR(file){
         lbl+=' ('+data.breakdown.map(b=>b.name+': '+sym+(b.amount/1e6).toFixed(1)+'M').join(', ')+')';
       $('arrLbl').textContent=lbl;
       uploadedFiles.arr = true;
+    const pARR=document.getElementById('pillARR');if(pARR){pARR.textContent='ARR loaded';pARR.className='hdr-pill done';}
       updateCurrencyUI();
       render();
       checkAutoInsight();
@@ -618,6 +651,7 @@ async function handleBS(file){
     $('bsStatus').innerHTML=`<div style="font-size:11px;color:var(--blue);margin-top:8px;font-weight:500">
       ✓ WC and Deferred Revenue auto-populated — edit below to override</div>`;
     uploadedFiles.bs = true;
+    const pBS=document.getElementById('pillBS');if(pBS){pBS.textContent='Balance sheet loaded';pBS.className='hdr-pill done';}
     checkAutoInsight();
 
     // Show "· from BS" indicator
@@ -693,6 +727,15 @@ function buildRight(){
     </div>
     <div id="wfRows"></div>
     <div id="netBox"></div>
+  </div>
+  <div class="insight-box" id="insightBox">
+    <div class="ins-hdr">
+      <span class="ins-label">Deal Intelligence</span>
+      <span class="ins-badge pending" id="insBadge">Awaiting data</span>
+    </div>
+    <div id="insightContent">
+      <div class="ins-waiting">Upload LOI, balance sheet and ARR report<br>to generate BlackRock-level deal analysis.</div>
+    </div>
   </div>
   <div id="hbCard" style="display:none">
     <div class="wfc"><div class="slbl" style="margin-bottom:8px">Holdback Tracker</div><div id="hbRows"></div></div>
@@ -842,7 +885,10 @@ function resetAll(){
   $('arrLbl').textContent='Upload ARR Report';
   const drn=document.getElementById('drFeedNote'); if(drn) drn.remove();
   bsSections=[]; customAdjs=[]; customId=0; dynamicMods=[];
-  loiHasHoldback=false; dealCurrency='USD'; window._autoInsightDone=false; uploadedFiles={loi:false,bs:false,arr:false}; const _cEl=document.getElementById('dealCurrency'); if(_cEl) _cEl.value='USD';
+  loiHasHoldback=false; dealCurrency='USD'; window._autoInsightDone=false; uploadedFiles={loi:false,bs:false,arr:false};
+  ['pillLOI','pillBS','pillARR'].forEach((id,i)=>{const el=document.getElementById(id);if(el){el.className='hdr-pill';el.textContent=['Awaiting LOI','Awaiting balance sheet','Awaiting ARR'][i];}});
+  const ib=document.getElementById('insightContent');if(ib)ib.innerHTML='<div class="ins-waiting">Upload LOI, balance sheet and ARR report<br>to generate BlackRock-level deal analysis.</div>';
+  const ibadge=document.getElementById('insBadge');if(ibadge){ibadge.textContent='Awaiting data';ibadge.className='ins-badge pending';} const _cEl=document.getElementById('dealCurrency'); if(_cEl) _cEl.value='USD';
   renderCustom(); renderDynamic();
   $('holdbackSection').style.display='none';
   $('mainContent').style.display='none';
@@ -900,12 +946,15 @@ async function showInsightPopup(){
     thinking.remove();
 
     // Show as highlighted insight card
+    // Populate chat bubble
     const card = document.createElement('div');
     card.style.cssText = 'background:linear-gradient(135deg,#EBF0FD,#F5F7FF);border:1px solid rgba(20,52,164,.2);border-radius:10px;padding:12px 14px;font-size:12px;line-height:1.7;color:var(--lbl);margin:4px 0';
-    card.innerHTML = '<div style="font-size:10px;font-weight:700;color:var(--blue);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">📊 Deal Intelligence</div>' +
+    card.innerHTML = '<div style="font-size:10px;font-weight:700;color:var(--blue);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">Deal Intelligence</div>' +
       data.text.replace(/\n/g,'<br>');
     msgs.appendChild(card);
     msgs.scrollTop = msgs.scrollHeight;
+    // Also populate the inline insight box
+    populateInsightBox(data.text);
 
     // Store in chat history
     chatMessages.push({role:'user', content:'Auto-analysis on file upload'});
@@ -919,6 +968,31 @@ async function showInsightPopup(){
     thinking.remove();
     addChatMsg('assistant','Auto-analysis failed: '+err.message);
   }
+}
+
+function populateInsightBox(text){
+  const box = document.getElementById('insightContent');
+  const badge = document.getElementById('insBadge');
+  if(!box) return;
+  if(badge){ badge.textContent='Auto-generated'; badge.className='ins-badge ready'; }
+  // Parse bullet lines into structured items
+  const lines = text.split('\n').filter(l=>l.trim());
+  let html='';
+  const dotColor = (line) => {
+    const l=line.toLowerCase();
+    if(/risk|warn|caution|concern|flag|negative|below|weak/i.test(l)) return 'red';
+    if(/watch|note|consider|check|verify|unknown|missing/i.test(l)) return 'amber';
+    if(/strong|positive|good|above|recommend|next step|action/i.test(l)) return 'green';
+    if(/multiple|ratio|benchmark|typical|market|saas|ev\/arr/i.test(l)) return 'blue';
+    return 'gray';
+  };
+  lines.forEach((line,i)=>{
+    const clean=line.replace(/^[-•*\d.]+\s*/,'').trim();
+    if(!clean) return;
+    if(i>0) html+='<div class="ins-sep"></div>';
+    html+=`<div class="ins-item"><div class="ins-dot ${dotColor(clean)}"></div><div class="ins-txt">${clean}</div></div>`;
+  });
+  box.innerHTML=html||'<div class="ins-waiting">Analysis complete.</div>';
 }
 
 function toggleChat(){
