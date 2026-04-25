@@ -2,8 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"/>
-<meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>PPA Calculator — Trilogy Acquisitions</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>PPA Calculator — Trilogy</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <style>
@@ -246,8 +247,6 @@ input.bsf:focus{border-color:var(--blue);background:#fff}
 .uc-btn.up{background:#1434A4;color:#fff}
 .uc-btn.dim{opacity:.4;pointer-events:none;background:#F2F0EB;border:1px solid #C8C5BE;color:#888}
 </style>
-</head>
-
 </head>
 <body>
 
@@ -798,39 +797,26 @@ function renderCustom(){
 
 // ── RIGHT PANEL ───────────────────────────────────────────────────────────────
 function buildRight(){
-  return `
-  <div class="slbl">Purchase price waterfall</div>
-  <div class="card">
-    <div style="font-size:16px;font-weight:700;color:#1434A4;margin-bottom:2px" id="wfName">—</div>
-    <div style="font-size:10px;color:#888780;margin-bottom:14px" id="wfSub"></div>
+  return `<div class="slbl">Purchase Price Waterfall</div>
+  <div class="wfc">
+    <div style="margin-bottom:10px">
+      <div style="font-size:15px;font-weight:700;color:var(--blue);font-family:'Playfair Display',serif" id="wfName">—</div>
+      <div style="font-size:11px;color:var(--lbl3);margin-top:2px" id="wfSub"></div>
+    </div>
     <div id="wfRows"></div>
     <div id="netBox"></div>
   </div>
   <div class="insight-box" id="insightBox">
     <div class="ins-hdr">
-      <span class="ins-title">Deal Intelligence</span>
-      <span class="ins-stamp" id="insightStamp">Awaiting data</span>
+      <span class="ins-label">Deal Intelligence</span>
+      <span class="ins-badge pending" id="insBadge">Awaiting data</span>
     </div>
     <div id="insightContent">
-      <div class="ins-placeholder">Upload LOI, ARR report, and balance sheet to generate full deal analysis — valuation benchmarks, risk flags, and negotiation positioning.</div>
+      <div class="ins-waiting">Upload LOI, balance sheet and ARR report<br>to generate deal insights.</div>
     </div>
   </div>
-  <button class="act-btn" onclick="toggleChat()">
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="white"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
-    Ask analyst
-  </button>
-  <button class="sec-btn" onclick="exportPDF()">Export PDF</button>
-  <div class="agent-wrap">
-    <div class="agent-bubble">
-      <div class="ab-title" id="agentBubbleTitle">Ready to analyse</div>
-      <div class="ab-txt" id="agentBubbleTxt">Upload your documents — I will flag risks, benchmark the multiple, and tell you where to push back.</div>
-    </div>
-    <button class="agent-btn" onclick="toggleChat()">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="white"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
-    </button>
-  </div>
-  <div id="hbCard" style="display:none;margin-top:10px">
-    <div class="card"><div class="slbl" style="margin-bottom:8px">Holdback Tracker</div><div id="hbRows"></div></div>
+  <div id="hbCard" style="display:none">
+    <div class="wfc"><div class="slbl" style="margin-bottom:8px">Holdback Tracker</div><div id="hbRows"></div></div>
   </div>`;
 }
 
@@ -1008,83 +994,145 @@ function checkAutoInsight(){
 }
 
 async function showInsightPopup(){
-  const insightContent = document.getElementById('insightContent');
-  const insightStamp = document.getElementById('insightStamp');
-  if(insightContent) insightContent.innerHTML='<div class="ins-placeholder" style="display:flex;align-items:center;justify-content:center;gap:8px"><div class="spin"></div>Generating deal intelligence...</div>';
-  if(insightStamp) insightStamp.textContent='Generating...';
-  if(!chatOpen) toggleChat();
-  const msgs=document.getElementById('chatMsgs');
-  const divider=document.createElement('div');
-  divider.style.cssText='display:flex;align-items:center;gap:8px;margin:8px 0';
-  divider.innerHTML='<div style="flex:1;height:1px;background:#C8C5BE"></div><span style="font-size:9px;color:#888780;white-space:nowrap;font-weight:700;letter-spacing:.08em;text-transform:uppercase">Auto Analysis</span><div style="flex:1;height:1px;background:#C8C5BE"></div>';
+  // Show loading state with a distinct popup style
+  const msgs = document.getElementById('chatMsgs');
+
+  // Divider
+  const divider = document.createElement('div');
+  divider.style.cssText = 'display:flex;align-items:center;gap:8px;margin:8px 0';
+  divider.innerHTML = '<div style="flex:1;height:1px;background:var(--sep2)"></div><span style="font-size:10px;color:var(--lbl3);white-space:nowrap;font-weight:600">AUTO ANALYSIS</span><div style="flex:1;height:1px;background:var(--sep2)"></div>';
   msgs.appendChild(divider);
-  const thinking=document.createElement('div');
-  thinking.className='chat-msg ai thinking';
-  thinking.textContent='Analysing deal...';
+
+  const thinking = document.createElement('div');
+  thinking.className = 'chat-msg ai thinking';
+  thinking.innerHTML = '🔍 Analysing deal...';
   msgs.appendChild(thinking);
-  msgs.scrollTop=msgs.scrollHeight;
+  msgs.scrollTop = msgs.scrollHeight;
+
   try{
-    const state=getDealState();
-    const resp=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:'Generate full deal intelligence brief.'}],dealState:state,mode:'insight'})});
-    const data=await resp.json();
+    const state = getDealState();
+    const resp = await fetch('/api/chat', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        messages:[{
+          role:'user',
+          content:`All financial data has been uploaded. Give me your top 3-5 deal insights right now — risks, whether the price is fair, what adjustments look unusual, and what I should negotiate harder on. Be direct and specific to the numbers in front of you.`
+        }],
+        dealState: state
+      })
+    });
+    const data = await resp.json();
     thinking.remove();
-    if(data.insight){
-      renderInsightBox(data.insight);
-      const summary=buildInsightSummary(data.insight);
-      const card=document.createElement('div');
-      card.style.cssText='background:#E6F1FB;border:1.5px solid #B5D4F4;border-radius:10px;padding:12px 14px;font-size:11px;line-height:1.7;color:#1a1a1a;margin:4px 0';
-      card.innerHTML='<div style="font-size:9px;font-weight:700;color:#0C447C;letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px">Deal Intelligence Summary</div>'+summary;
-      msgs.appendChild(card);
-      msgs.scrollTop=msgs.scrollHeight;
-      chatMessages.push({role:'user',content:'Auto-analysis'});
-      chatMessages.push({role:'assistant',content:summary.replace(/<[^>]+>/g,'')});
-    }
+
+    // Show as highlighted insight card
+    // Populate chat bubble
+    const card = document.createElement('div');
+    card.style.cssText = 'background:linear-gradient(135deg,#EBF0FD,#F5F7FF);border:1px solid rgba(20,52,164,.2);border-radius:10px;padding:12px 14px;font-size:12px;line-height:1.7;color:var(--lbl);margin:4px 0';
+    card.innerHTML = '<div style="font-size:10px;font-weight:700;color:var(--blue);letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px">Deal Intelligence</div>' +
+      data.text.replace(/\n/g,'<br>');
+    msgs.appendChild(card);
+    msgs.scrollTop = msgs.scrollHeight;
+    // Also populate the inline insight box
+    populateInsightBox(data.text);
+
+    // Store in chat history
+    chatMessages.push({role:'user', content:'Auto-analysis on file upload'});
+    chatMessages.push({role:'assistant', content: data.text});
+
+    // Pulse the chat button to draw attention
+    const btn = document.querySelector('.chat-btn');
+    if(btn){ btn.style.animation='none'; btn.style.boxShadow='0 0 0 4px rgba(20,52,164,.3)'; }
+
   }catch(err){
     thinking.remove();
-    if(insightContent) insightContent.innerHTML='<div class="ins-placeholder">Analysis failed: '+err.message+'</div>';
+    addChatMsg('assistant','Auto-analysis failed: '+err.message);
   }
 }
 
-function renderInsightBox(insight){
-  const box=document.getElementById('insightContent');
-  const stamp=document.getElementById('insightStamp');
-  if(!box)return;
-  if(stamp) stamp.textContent=new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-  const dotColors={red:'#E24B4A',amber:'#BA7517',green:'#639922',blue:'#1434A4',gray:'#888780'};
+function populateInsightBox(text){
+  const box = document.getElementById('insightContent');
+  const badge = document.getElementById('insBadge');
+  if(!box) return;
+  if(badge){ badge.textContent='Auto-generated'; badge.className='ins-badge ready'; }
+  // Parse bullet lines into structured items
+  const lines = text.split('\n').filter(l=>l.trim());
   let html='';
-  if(insight.metrics&&insight.metrics.length){
-    html+='<div class="metric-strip">';
-    insight.metrics.forEach(m=>{
-      const bad=m.status==='high'||m.status==='negative'||m.status==='elevated';
-      const good=m.status==='positive'||m.status==='fair'||m.status==='low';
-      const color=bad?'#791F1F':good?'#27500A':'#1434A4';
-      html+=`<div class="ms-box"><div class="ms-val" style="color:${color}">${m.value}</div><div class="ms-lbl">${m.label}</div><div style="font-size:9px;color:#888780;margin-top:3px;line-height:1.4">${m.benchmark}</div></div>`;
-    });
-    html+='</div>';
-  }
-  if(insight.sections){
-    insight.sections.forEach((sec,si)=>{
-      if(si>0) html+='<div class="ins-divider"></div>';
-      html+=`<div class="ins-section-lbl">${sec.label}</div>`;
-      (sec.items||[]).forEach(item=>{
-        const color=dotColors[item.dot]||dotColors.gray;
-        const parts=item.text.split(':');
-        const bold=parts.length>1?`<strong>${parts[0]}:</strong>${parts.slice(1).join(':')}`:item.text;
-        html+=`<div class="ins-item"><div class="ins-dot" style="background:${color}"></div><div class="ins-txt">${bold}</div></div>`;
-      });
-    });
-  }
-  box.innerHTML=html;
+  const dotColor = (line) => {
+    const l=line.toLowerCase();
+    if(/risk|warn|caution|concern|flag|negative|below|weak/i.test(l)) return 'red';
+    if(/watch|note|consider|check|verify|unknown|missing/i.test(l)) return 'amber';
+    if(/strong|positive|good|above|recommend|next step|action/i.test(l)) return 'green';
+    if(/multiple|ratio|benchmark|typical|market|saas|ev\/arr/i.test(l)) return 'blue';
+    return 'gray';
+  };
+  lines.forEach((line,i)=>{
+    const clean=line.replace(/^[-•*\d.]+\s*/,'').trim();
+    if(!clean) return;
+    if(i>0) html+='<div class="ins-sep"></div>';
+    html+=`<div class="ins-item"><div class="ins-dot ${dotColor(clean)}"></div><div class="ins-txt">${clean}</div></div>`;
+  });
+  box.innerHTML=html||'<div class="ins-waiting">Analysis complete.</div>';
 }
 
-function buildInsightSummary(insight){
-  let txt='';
-  if(insight.sections) insight.sections.forEach(sec=>{
-    txt+=`<strong>${sec.label}</strong><br>`;
-    (sec.items||[]).slice(0,2).forEach(item=>{txt+='· '+item.text+'<br>';});
-    txt+='<br>';
-  });
-  return txt;
+
+// ── UPLOAD CARD STATE HELPERS ─────────────────────────────────────────────────
+function ucSetProc(id, label){
+  const card = document.getElementById('uc'+id);
+  if(!card) return;
+  card.className = 'uc proc';
+  document.getElementById('uc'+id+'bdg').textContent = label;
+  document.getElementById('uc'+id+'bdg').className = 'uc-bdg bdg-proc';
+  document.getElementById('uc'+id+'ic').className = 'uc-ic navy';
+  document.getElementById('uc'+id+'hint').style.display = 'none';
+  document.getElementById('uc'+id+'vals').style.display = 'none';
+  document.getElementById('uc'+id+'proclbl').style.display = 'block';
+  document.getElementById('uc'+id+'proclbl').textContent = label+'...';
+  document.getElementById('uc'+id+'prog').style.display = 'block';
+  document.getElementById('uc'+id+'progfill').className = 'uc-prog-fill ind';
+  document.getElementById('uc'+id+'btn').className = 'uc-btn dim';
+  document.getElementById('uc'+id+'btn').textContent = 'Please wait';
+}
+
+function ucSetDone(id, vals, icColor){
+  fileVersions[id.toLowerCase()]++;
+  const v = fileVersions[id.toLowerCase()];
+  const card = document.getElementById('uc'+id);
+  if(!card) return;
+  card.className = 'uc done';
+  document.getElementById('uc'+id+'bdg').textContent = 'Done';
+  document.getElementById('uc'+id+'bdg').className = 'uc-bdg bdg-done';
+  const ic = document.getElementById('uc'+id+'ic');
+  ic.className = 'uc-ic grn';
+  // Green checkmark icon
+  ic.innerHTML = '<svg width="12" height="12" viewBox="0 0 24 24" fill="#27500A"><path d="M9 16.17L4.83 12l-1.42 1.41L9 19 21 7l-1.41-1.41z"/></svg>';
+  document.getElementById('uc'+id+'hint').style.display = 'none';
+  document.getElementById('uc'+id+'proclbl').style.display = 'none';
+  document.getElementById('uc'+id+'prog').style.display = 'none';
+  const valsEl = document.getElementById('uc'+id+'vals');
+  valsEl.innerHTML = vals;
+  valsEl.style.display = 'block';
+  const verEl = document.getElementById('uc'+id+'ver');
+  verEl.textContent = 'V'+v;
+  verEl.style.display = 'inline';
+  const btn = document.getElementById('uc'+id+'btn');
+  btn.className = 'uc-btn rpl';
+  btn.textContent = 'Replace → V'+(v+1);
+}
+
+function ucSetWait(id){
+  const card = document.getElementById('uc'+id);
+  if(!card) return;
+  card.className = 'uc wait';
+  document.getElementById('uc'+id+'bdg').textContent = 'Awaiting';
+  document.getElementById('uc'+id+'bdg').className = 'uc-bdg bdg-wait';
+  document.getElementById('uc'+id+'prog').style.display = 'none';
+  document.getElementById('uc'+id+'proclbl').style.display = 'none';
+  document.getElementById('uc'+id+'vals').style.display = 'none';
+  document.getElementById('uc'+id+'ver').style.display = 'none';
+  document.getElementById('uc'+id+'hint').style.display = 'block';
+  document.getElementById('uc'+id+'btn').className = 'uc-btn up';
+  document.getElementById('uc'+id+'btn').textContent = 'Upload';
 }
 
 function toggleChat(){
@@ -1226,7 +1274,45 @@ function exportPDF(){
 }
 
 
-
 </script>
+
+<!-- EXPORT BUTTON -->
+<button class="export-btn" onclick="exportPDF()">📄 Export PDF</button>
+
+<!-- CHAT BUTTON -->
+<button class="chat-btn" onclick="toggleChat()" title="Ask the AI assistant">
+  <svg viewBox="0 0 24 24"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm-2 12H6v-2h12v2zm0-3H6V9h12v2zm0-3H6V6h12v2z"/></svg>
+</button>
+
+<!-- CHAT PANEL -->
+<div class="chat-panel hidden" id="chatPanel">
+  <div class="chat-header">
+    <div>
+      <div class="chat-header-title">PPA Assistant</div>
+      <div class="chat-header-sub">Ask about calculations, request changes, export</div>
+    </div>
+    <button class="chat-close" onclick="toggleChat()">×</button>
+  </div>
+  <div class="chat-msgs" id="chatMsgs">
+    <div class="chat-msg ai">Senior M&A analyst here. Upload your deal files, then ask me anything — deal risks, negotiation strategy, whether the multiple is fair, or what adjustments you're missing.</div>
+  </div>
+  <div class="chat-actions" id="chatPills">
+    <span class="chat-pill" onclick="sendQuick('Review this deal — flag any risks or red flags')">🚨 Flag risks</span>
+    <span class="chat-pill" onclick="sendQuick('Is the EV/ARR multiple fair for this type of business?')">EV/ARR multiple</span>
+    <span class="chat-pill" onclick="sendQuick('What adjustments am I missing that are standard for software deals?')">Missing adjustments</span>
+    <span class="chat-pill" onclick="sendQuick('Where will the seller push back in negotiations?')">Negotiation intel</span>
+    <span class="chat-pill" onclick="sendQuick('What is the downside scenario if ARR comes in 20% below validation?')">Downside scenario</span>
+    <span class="chat-pill" onclick="sendQuick('Export to PDF')">Export PDF</span>
+  </div>
+  <div class="chat-input-row">
+    <textarea class="chat-input" id="chatInput" placeholder="Ask anything about this deal..." rows="1"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();sendChat()}"
+      oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,80)+'px'"></textarea>
+    <button class="chat-send" onclick="sendChat()">
+      <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+    </button>
+  </div>
+</div>
+
 </body>
 </html>
