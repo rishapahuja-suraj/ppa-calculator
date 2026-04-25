@@ -15,27 +15,40 @@ export default async function handler(req, res) {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return res.status(500).json({ error: 'ANTHROPIC_API_KEY not configured' });
 
-  // Convert rows to readable text for Claude
   const tableText = rows
     .slice(0, 300)
     .map(row => row.map(c => String(c ?? '').trim()).join('\t'))
     .join('\n');
 
-  const prompt = `You are a financial analyst. I'm giving you raw spreadsheet data from a balance sheet or trial balance file (sheet: "${sheetName}").
+  const prompt = `You are a financial analyst parsing a balance sheet spreadsheet (sheet: "${sheetName}").
 
-Extract and return ONLY a valid JSON object — no explanation, no markdown, no code blocks.
+The spreadsheet may have these columns (not always in this exact order):
+- Account Type (e.g. "Asset - Bank", "Liability - Account Payable")  
+- Account Name (short name like "Bank", "Accounts Receivable")
+- Trial Balance amount (the raw balance)
+- Check column (ignore this)
+- Assumed amount (the amount ACTUALLY assumed at closing — use this for WC calculations, NOT the trial balance)
+- Not Assumed amount
+- Include in Tangible Working Capital? (Yes/No)
 
-Return this exact structure:
+CRITICAL RULES:
+1. Use the "Assumed" column value for WC calculations — NOT the trial balance
+2. Only include rows where "Include in Tangible Working Capital" = Yes for WC totals
+3. For deferred revenue: classify "Licences", "CSP", "Subscription", "Support" as software; "Expert Services", "Professional Services", "Implementation", "Services" as non-software
+4. Ignore rows with zero assumed amounts
+5. Skip header rows, total rows, check rows
+
+Return ONLY a valid JSON object — no explanation, no markdown:
 {
   "sections": [
     {
       "title": "Assets",
       "rows": [
-        { "name": "Accounts Receivable", "amount": 4747682 }
+        { "name": "Accounts Receivable", "trialBalance": 4747682, "assumed": 4747682, "includeWC": true }
       ]
     },
     {
-      "title": "Liabilities",
+      "title": "Liabilities", 
       "rows": [...]
     },
     {
@@ -43,20 +56,15 @@ Return this exact structure:
       "rows": [...]
     }
   ],
+  "wcAssets": <number — sum of assumed amounts where includeWC=true AND in Assets section>,
+  "wcLiabilities": <number — sum of assumed amounts where includeWC=true AND in Liabilities section, as positive number>,
+  "workingCapital": <number — wcAssets minus wcLiabilities>,
   "deferredRevenue": {
-    "software": <number — total software/licence/subscription deferred revenue, 0 if none>,
-    "services": <number — total services/professional services/implementation deferred revenue, 0 if none>,
-    "total": <number — total of all deferred revenue>
+    "software": <number — assumed amount of software/licence deferred revenue>,
+    "services": <number — assumed amount of services deferred revenue>,
+    "total": <number — total assumed deferred revenue>
   }
 }
-
-Rules:
-- Consolidate individual GL accounts into meaningful summary line items (e.g. group all "Asset - Bank" accounts into one "Bank" row)
-- Use positive numbers for assets, negative numbers for liabilities
-- For deferredRevenue: classify "Licences", "CSP", "Support", "Subscription" as software; "Expert Services", "Professional Services", "Implementation" as services
-- Exclude P&L rows (Revenue, COGS, Expenses) and intercompany balances from sections
-- Only include rows with non-zero amounts
-- section titles must be exactly: "Assets", "Liabilities", or "Equity & Reserves"
 
 SPREADSHEET DATA:
 ${tableText}`;

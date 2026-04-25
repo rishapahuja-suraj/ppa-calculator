@@ -544,8 +544,12 @@ async function handleBS(file){
       tabName='CSV';
     }else{
       const wb=XLSX.read(ab,{type:'array'});
-      const tab=wb.SheetNames.find(s=>/fin.?68|closing.?balance|balance.?sheet/i.test(s))||
-                wb.SheetNames.find(s=>/balance|financ|closing/i.test(s))||wb.SheetNames[0];
+      // Priority: 1) "Closing financial statements" (has Assumed col) 2) FIN_68 3) any balance sheet
+      const tab=wb.SheetNames.find(s=>/closing financial statements/i.test(s))||
+                wb.SheetNames.find(s=>/fin.?68/i.test(s))||
+                wb.SheetNames.find(s=>/closing.?balance|balance.?sheet/i.test(s))||
+                wb.SheetNames.find(s=>/balance|financ|closing/i.test(s))||
+                wb.SheetNames[0];
       tabName=tab;
       rows=XLSX.utils.sheet_to_json(wb.Sheets[tab],{header:1,defval:''});
     }
@@ -554,11 +558,14 @@ async function handleBS(file){
     const data=await resp.json();
     if(!resp.ok) throw new Error(data.error||'API error '+resp.status);
 
-    // Populate WC fields from Assets/Liabilities
+    // Use Claude's pre-calculated WC figures (from Assumed + Include in WC columns)
+    // Fall back to section-level calculation if not provided
     const assets=(data.sections||[]).find(s=>s.title==='Assets');
     const liabs=(data.sections||[]).find(s=>s.title==='Liabilities');
-    const wcAssets=assets?assets.rows.filter(r=>isWCAsset(r.name)).reduce((s,r)=>s+(r.amount||0),0):0;
-    const wcLiabs=liabs?Math.abs(liabs.rows.filter(r=>isWCLiab(r.name)).reduce((s,r)=>s+(r.amount||0),0)):0;
+    const wcAssets=data.wcAssets||
+      (assets?assets.rows.filter(r=>r.includeWC).reduce((s,r)=>s+(r.assumed||r.amount||0),0):0);
+    const wcLiabs=data.wcLiabilities||
+      (liabs?Math.abs(liabs.rows.filter(r=>r.includeWC).reduce((s,r)=>s+(r.assumed||r.amount||0),0)):0);
     if(wcAssets){ $('wcNetAR').value=Math.round(wcAssets); }
     if(wcLiabs) { $('wcOther').value=Math.round(wcLiabs); }
 
