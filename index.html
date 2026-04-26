@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>PPA Calculator — Trilogy Acquisitions</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#E8E6E0;min-height:100vh;padding:16px}
+
+/* ── SHELL ── */
+.shell{max-width:1300px;margin:0 auto;border:1.5px solid #B8B5AE;border-radius:14px;overflow:hidden;background:#F2F0EB;display:flex;flex-direction:column;min-height:calc(100vh - 32px)}
+
+/* ── HEADER ── */
+header{background:#1434A4;position:relative;overflow:hidden;padding:18px 22px 16px;display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0}
+.h-left{position:relative;z-index:2}
+.h-logo{width:32px;height:32px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.25);border-radius:7px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:14px;font-weight:700;margin-bottom:8px}
+.h-title{font-size:19px;font-weight:600;color:#fff;letter-spacing:-.3px;margin-bottom:2px}
+.h-sub{font-size:11px;color:rgba(255,255,255,.45);margin-bottom:10px}
+.h-pills{display:flex;gap:5px;flex-wrap:wrap}
+.hpill{font-size:10px;font-weight:500;padding:2px 9px;border-radius:20px;border:1px solid rgba(255,255,255,.2);background:rgba(255,255,255,.08);color:rgba(255,255,255,.5);transition:all .2s}
+.hpill.done{background:rgba(80,200,120,.2);color:#9FE1CB;border-color:rgba(80,200,120,.3)}
+.h-right{position:relative;z-index:2}
+.reset-btn{font-size:11px;padding:5px 11px;border:1px solid rgba(255,255,255,.25);border-radius:7px;background:rgba(255,255,255,.1);color:rgba(255,255,255,.7);cursor:pointer;font-family:inherit}
+.reset-btn:hover{background:rgba(255,255,255,.2)}
+.h-chart{position:absolute;right:0;top:0;height:100%;pointer-events:none;opacity:.85}
+
+/* ── UPLOAD SECTION ── */
+.upload-section{background:#FAFAF8;border-bottom:1.5px solid #C8C5BE;padding:14px 18px;flex-shrink:0}
+.upload-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-bottom:8px}
+.uc{border:1.5px solid #C8C5BE;border-radius:10px;padding:11px 13px;cursor:pointer;background:#F2F0EB;position:relative;transition:border-color .2s;min-height:88px}
+.uc:hover{border-color:#1434A4}
+.uc.done{border-color:#639922;background:#F4F9EE}
+.uc.proc{border-color:#1434A4;background:#EEF2FB}
+.uc-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:5px}
+.uc-name{font-size:12px;font-weight:600;color:#1a1a1a;display:flex;align-items:center;gap:6px}
+.uc-ic{width:20px;height:20px;border-radius:5px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.uc-ic.blue{background:#E6F1FB}
+.uc-ic.grn{background:#EAF3DE}
+.uc-ic.amb{background:#FEF3E2}
+.uc-bdg{font-size:9px;font-weight:600;padding:2px 7px;border-radius:20px;letter-spacing:.04em;flex-shrink:0}
+.bdg-wait{background:#F2F0EB;color:#888780;border:1px solid #C8C5BE}
+.bdg-done{background:#EAF3DE;color:#27500A;border:1px solid #C0DD97}
+.bdg-proc{background:#E6F1FB;color:#0C447C;border:1px solid #B5D4F4}
+.uc-hint{font-size:10px;color:#888780;line-height:1.4;margin-bottom:6px}
+.uc-vals{font-size:10px;color:#1434A4;font-weight:500;line-height:1.6;margin-bottom:4px;display:none}
+.uc-proc-lbl{font-size:10px;color:#1434A4;display:none;align-items:center;gap:5px;margin-bottom:4px}
+.uc-btn{width:100%;padding:6px;border-radius:6px;font-size:11px;font-weight:600;cursor:pointer;border:none;font-family:inherit;text-align:center}
+.uc-btn.up{background:#1434A4;color:#fff}
+.uc-btn.up:hover{background:#0F2A8A}
+.uc-btn.done{background:#FAFAF8;color:#639922;border:1px solid #C0DD97}
+.skip-link{text-align:center}
+.skip-link a{font-size:11px;color:#1434A4;text-decoration:none}
+.skip-link a:hover{text-decoration:underline}
+
+/* ── SPINNER ── */
+.spin{width:10px;height:10px;border:2px solid #B5D4F4;border-top-color:#1434A4;border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── BODY ── */
+.body{display:grid;grid-template-columns:1fr 1fr;flex:1;min-height:0}
+.col{padding:16px 18px;overflow-y:auto}
+.col-l{border-right:1.5px solid #C8C5BE}
+
+/* ── SECTION LABELS ── */
+.slbl{font-size:9px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#1434A4;margin-bottom:7px;margin-top:16px;display:flex;align-items:center;gap:7px}
+.slbl:first-child{margin-top:0}
+.slbl::after{content:'';flex:1;height:1px;background:#C8C5BE}
+
+/* ── CARDS ── */
+.card{background:#FAFAF8;border:1.5px solid #C8C5BE;border-radius:10px;padding:12px 14px;margin-bottom:8px}
+
+/* ── FIELD GRID ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:6px}
+.g2:last-child{margin-bottom:0}
+.fg{background:#F2F0EB;border:1.5px solid #C8C5BE;border-radius:8px;padding:8px 10px}
+.fl{font-size:9px;text-transform:uppercase;letter-spacing:.06em;color:#888780;font-weight:600;margin-bottom:3px}
+.fi{background:transparent;border:none;outline:none;font-size:13px;font-weight:600;color:#1a1a1a;width:100%;font-family:inherit}
+.fi::placeholder{color:#B4B2A9;font-weight:400}
+.ir{display:flex;align-items:center;background:#F2F0EB;border:1.5px solid #C8C5BE;border-radius:8px;padding:7px 10px;gap:4px}
+.ir:focus-within{border-color:#1434A4}
+.px2{font-size:12px;color:#888780;flex-shrink:0}
+.ni{border:none;outline:none;background:transparent;font-size:13px;color:#1a1a1a;width:100%;font-family:inherit}
+.ni::placeholder{color:#B4B2A9}
+.psr{display:flex;align-items:center;background:#F2F0EB;border:1.5px solid #C8C5BE;border-radius:8px;padding:7px 10px;gap:4px;width:140px}
+.pi{border:none;outline:none;background:transparent;font-size:13px;color:#1a1a1a;width:60px;font-family:inherit}
+.pss{font-size:12px;color:#888780}
+.met-row{display:flex;gap:12px;padding-top:7px;border-top:1px solid #E5E2DC;margin-top:7px;flex-wrap:wrap}
+.met{font-size:11px;color:#888780}
+.met strong{color:#1434A4}
+
+/* ── ACCORDION ── */
+.ah{display:flex;align-items:center;justify-content:space-between;padding:10px 13px;cursor:pointer;background:#FAFAF8;border:1.5px solid #C8C5BE;border-radius:10px;margin-bottom:4px;transition:border-color .15s}
+.ah:hover{border-color:rgba(20,52,164,.4)}
+.ah.op{border-bottom-left-radius:0;border-bottom-right-radius:0;border-bottom-color:transparent;margin-bottom:0}
+.al{display:flex;align-items:center;gap:9px}
+.at{font-size:13px;font-weight:600;color:#1a1a1a}
+.ab{display:none;background:#FAFAF8;border:1.5px solid #C8C5BE;border-top:none;border-bottom-left-radius:10px;border-bottom-right-radius:10px;padding:12px 14px;margin-bottom:8px}
+.ab.op{display:block}
+.chv{font-size:11px;color:#888780;transition:transform .2s;flex-shrink:0}
+.chv.op{transform:rotate(180deg)}
+.tog{display:inline-flex;width:30px;height:17px;border-radius:17px;background:#C8C5BE;cursor:pointer;position:relative;transition:background .2s;flex-shrink:0}
+.tog input{display:none}
+.tsl{position:absolute;left:3px;top:3px;width:11px;height:11px;background:#fff;border-radius:50%;transition:transform .2s}
+input[type=checkbox]:checked+.tsl{transform:translateX(13px)}
+.tog:has(input:checked){background:#1434A4}
+.badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:20px;border:1px solid;white-space:nowrap}
+.bk{background:#F2F0EB;color:#888780;border-color:#C8C5BE}
+.bg{background:#EAF3DE;color:#27500A;border-color:#C0DD97}
+.br{background:#FCEBEB;color:#791F1F;border-color:#F7C1C1}
+.by{background:#FEF3E2;color:#633806;border-color:#F4C07A}
+
+/* ── PREVIEW BOXES ── */
+.pbox{background:#F2F0EB;border:1.5px solid #C8C5BE;border-radius:8px;padding:10px 12px;margin-top:10px;font-size:11px}
+.pr{display:flex;justify-content:space-between;padding:2px 0;color:#555}
+.ptot{display:flex;justify-content:space-between;padding:5px 0 0;border-top:1px solid #C8C5BE;margin-top:4px;font-weight:700;font-size:12px}
+.pwarn{color:#BA7517;font-size:10px;margin-top:6px;padding:5px 8px;background:#FAEEDA;border-radius:5px;border:1px solid #F4C07A}
+
+/* ── CUSTOM ADJ ── */
+.caj-row{display:flex;gap:5px;align-items:center;margin-bottom:5px}
+.sel{border:1.5px solid #C8C5BE;border-radius:6px;padding:6px 7px;font-size:11px;background:#F2F0EB;color:#1a1a1a;font-family:inherit}
+.del-btn{border:none;background:none;color:#888780;cursor:pointer;font-size:15px;padding:0 3px;line-height:1}
+.del-btn:hover{color:#E24B4A}
+.add-btn{font-size:11px;color:#1434A4;background:none;border:1px solid #B5D4F4;border-radius:6px;padding:5px 10px;cursor:pointer;font-family:inherit;margin-top:4px}
+.add-btn:hover{background:#E6F1FB}
+
+/* ── WATERFALL ── */
+.wf-name{font-size:15px;font-weight:700;color:#1434A4;margin-bottom:2px}
+.wf-meta{font-size:10px;color:#888780;margin-bottom:12px}
+.wfr{display:flex;justify-content:space-between;align-items:flex-start;padding:8px 0;border-bottom:1px solid #E5E2DC}
+.wfr:last-child{border:none}
+.wfl{font-size:12px;color:#1a1a1a;font-weight:500}
+.wfs{font-size:10px;color:#888780;margin-top:1px}
+.wfv{font-size:12px;font-weight:700;text-align:right}
+.vb{color:#1434A4;font-size:13px}
+.vp{color:#27500A}
+.vn{color:#791F1F}
+.vd{color:#C8C5BE}
+.vsep{height:1px;background:#C8C5BE;margin:2px 0}
+
+/* ── NET BOX ── */
+.nbox{background:#1434A4;border-radius:10px;padding:13px 15px;display:flex;justify-content:space-between;align-items:center;margin-top:10px}
+.nlbl{font-size:9px;font-weight:700;color:rgba(255,255,255,.5);letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px}
+.nval{font-size:24px;font-weight:700;color:#fff;letter-spacing:-.5px}
+.ndv{font-size:13px;font-weight:700;text-align:right;margin-bottom:2px}
+.npct{font-size:10px;color:rgba(255,255,255,.4);text-align:right}
+
+/* ── INSIGHT BOX ── */
+.ibox{background:#FAFAF8;border:1.5px solid #C8C5BE;border-radius:10px;padding:13px 14px;margin-top:8px}
+.ihdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding-bottom:8px;border-bottom:1px solid #E5E2DC}
+.ititle{font-size:9px;font-weight:700;color:#1434A4;letter-spacing:.1em;text-transform:uppercase}
+.istamp{font-size:9px;font-weight:500;padding:2px 7px;border-radius:20px;background:#EAF3DE;color:#27500A;border:1px solid #C0DD97}
+.iph{font-size:11px;color:#B4B2A9;text-align:center;padding:18px 0;line-height:1.7}
+.igenBtn{width:100%;padding:8px;background:#E6F1FB;color:#0C447C;border:1.5px solid #B5D4F4;border-radius:8px;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit;display:flex;align-items:center;justify-content:center;gap:6px;margin-top:6px}
+.igenBtn:hover{background:#1434A4;color:#fff;border-color:#1434A4}
+.mstrip{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;margin-bottom:10px}
+.ms{background:#F2F0EB;border:1.5px solid #C8C5BE;border-radius:8px;padding:8px 8px;text-align:center}
+.msv{font-size:14px;font-weight:700;margin-bottom:2px}
+.msl{font-size:9px;color:#888780;text-transform:uppercase;letter-spacing:.05em;font-weight:600}
+.msb{font-size:9px;color:#888780;margin-top:2px;line-height:1.3}
+.iseclbl{font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:#888780;margin-bottom:6px;margin-top:10px}
+.iseclbl:first-child{margin-top:0}
+.iitem{display:flex;gap:7px;margin-bottom:7px;align-items:flex-start}
+.iitem:last-child{margin-bottom:0}
+.idot{width:6px;height:6px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.itxt{font-size:11px;color:#1a1a1a;line-height:1.6}
+.itxt strong{font-weight:700}
+.isep{height:1px;background:#E5E2DC;margin:6px 0}
+
+/* ── AGENT + BUTTONS ── */
+.act-btn{width:100%;padding:9px;background:#1434A4;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;margin-bottom:5px;margin-top:8px;font-family:inherit}
+.act-btn:hover{background:#0F2A8A}
+.sec-btn{width:100%;padding:8px;background:#FAFAF8;color:#1a1a1a;border:1.5px solid #C8C5BE;border-radius:8px;font-size:12px;cursor:pointer;font-family:inherit;margin-bottom:5px;display:block;text-align:center}
+.sec-btn:hover{border-color:#1434A4;color:#1434A4}
+.agent-wrap{display:flex;align-items:flex-end;gap:8px;margin-top:8px}
+.agent-bubble{background:#FAFAF8;border:1.5px solid #C8C5BE;border-radius:10px;border-bottom-right-radius:3px;padding:9px 11px;flex:1}
+.abt{font-size:11px;font-weight:600;color:#1434A4;margin-bottom:2px}
+.abs{font-size:10px;color:#888780;line-height:1.5}
+.agent-btn{width:42px;height:42px;background:#1434A4;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.agent-btn:hover{background:#0F2A8A}
+
+/* ── CHAT PANEL ── */
+.chat-fab{position:fixed;bottom:22px;right:22px;width:48px;height:48px;background:#1434A4;border-radius:50%;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:400;box-shadow:0 4px 14px rgba(20,52,164,.35)}
+.chat-fab:hover{background:#0F2A8A}
+.cpanel{position:fixed;bottom:80px;right:22px;width:370px;height:500px;background:#FAFAF8;border-radius:12px;border:1.5px solid #C8C5BE;z-index:400;display:flex;flex-direction:column;overflow:hidden;transition:all .2s;transform-origin:bottom right;box-shadow:0 8px 30px rgba(0,0,0,.12)}
+.cpanel.hidden{transform:scale(0);opacity:0;pointer-events:none}
+.chdr{background:#1434A4;padding:12px 14px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.chdr-t{color:#fff;font-size:13px;font-weight:600}
+.chdr-s{color:rgba(255,255,255,.5);font-size:10px;margin-top:1px}
+.cclose{background:none;border:none;color:rgba(255,255,255,.6);cursor:pointer;font-size:20px;line-height:1}
+.cmsgs{flex:1;overflow-y:auto;padding:11px 13px;display:flex;flex-direction:column;gap:7px}
+.cmsg{max-width:88%;padding:8px 11px;border-radius:10px;font-size:12px;line-height:1.6}
+.cmsg.u{background:#1434A4;color:#fff;align-self:flex-end;border-radius:10px 10px 2px 10px}
+.cmsg.a{background:#F2F0EB;color:#1a1a1a;align-self:flex-start;border-radius:10px 10px 10px 2px;border:1.5px solid #C8C5BE}
+.cmsg.t{color:#888780;font-style:italic}
+.cpills{display:flex;flex-wrap:wrap;gap:4px;padding:0 13px 7px;flex-shrink:0}
+.cpill{font-size:10px;color:#1434A4;background:#E6F1FB;border:1px solid #B5D4F4;border-radius:20px;padding:3px 8px;cursor:pointer;white-space:nowrap;font-weight:500}
+.cpill:hover{background:#1434A4;color:#fff}
+.cinput-row{border-top:1.5px solid #C8C5BE;padding:9px 11px;display:flex;gap:7px;align-items:flex-end;flex-shrink:0}
+.cinput{flex:1;background:#F2F0EB;border:1.5px solid #C8C5BE;border-radius:8px;padding:7px 9px;font-size:12px;font-family:inherit;resize:none;outline:none;max-height:80px;line-height:1.5;color:#1a1a1a}
+.cinput:focus{border-color:#1434A4}
+.csend{background:#1434A4;border:none;border-radius:7px;width:30px;height:30px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.csend:hover{background:#0F2A8A}
+.exp-btn{position:fixed;bottom:22px;right:80px;background:#FAFAF8;border:1.5px solid #C8C5BE;border-radius:8px;padding:9px 13px;font-size:11px;font-weight:600;color:#1a1a1a;cursor:pointer;z-index:400;display:flex;align-items:center;gap:5px;font-family:inherit;box-shadow:0 2px 8px rgba(0,0,0,.07)}
+.exp-btn:hover{border-color:#1434A4;color:#1434A4}
+
+/* ── EMPTY STATE ── */
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:300px;gap:7px;opacity:.4;padding:20px}
+.ei{font-size:30px}
+.et{font-size:13px;font-weight:600;color:#1a1a1a}
+.es{font-size:11px;color:#888780}
+
+/* ── PRINT ── */
+@media print{
+  body{background:#fff;padding:0}
+  .shell{border:none;border-radius:0;min-height:auto}
+  .upload-section,.chat-fab,.cpanel,.exp-btn,.reset-btn,.h-chart{display:none!important}
+  .body{display:block}
+  .col,.col-l{width:100%;border:none;padding:12px}
+}
+</style>
+</head>
+
+<body>
+<div class="shell">
+
+<!-- HEADER -->
+<header>
+  <div class="h-left">
+    <div class="h-logo">T</div>
+    <div class="h-title">Purchase Price Adjustment</div>
+    <div class="h-sub">Trilogy Acquisitions &middot; Created by Rishap Ahuja</div>
+    <div class="h-pills">
+      <span class="hpill" id="pLOI">Awaiting LOI</span>
+      <span class="hpill" id="pARR">Awaiting ARR</span>
+      <span class="hpill" id="pBS">Awaiting balance sheet</span>
+    </div>
+  </div>
+  <div class="h-right"><button class="reset-btn" onclick="resetAll()">&#8635; Reset</button></div>
+  <svg class="h-chart" viewBox="0 0 420 100" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMaxYMid meet">
+    <text x="348" y="20" font-size="9" fill="rgba(255,255,255,.15)" font-family="sans-serif">GBP</text>
+    <text x="378" y="38" font-size="8" fill="rgba(255,255,255,.1)" font-family="sans-serif">USD</text>
+    <text x="356" y="55" font-size="7" fill="rgba(255,255,255,.08)" font-family="sans-serif">EUR</text>
+    <g transform="translate(188,14)">
+      <rect x="0" y="8" width="15" height="66" rx="2" fill="rgba(255,255,255,.3)"/>
+      <text x="7" y="6" font-size="6" fill="rgba(255,255,255,.4)" text-anchor="middle" font-family="sans-serif">PP</text>
+      <rect x="21" y="30" width="15" height="44" rx="2" fill="rgba(255,255,255,.17)"/>
+      <text x="28" y="28" font-size="6" fill="rgba(255,255,255,.32)" text-anchor="middle" font-family="sans-serif">WC</text>
+      <rect x="42" y="42" width="15" height="32" rx="2" fill="rgba(255,255,255,.13)"/>
+      <text x="49" y="40" font-size="6" fill="rgba(255,255,255,.28)" text-anchor="middle" font-family="sans-serif">DR</text>
+      <rect x="63" y="18" width="15" height="56" rx="2" fill="rgba(255,255,255,.38)"/>
+      <text x="70" y="16" font-size="6" fill="rgba(255,255,255,.52)" text-anchor="middle" font-family="sans-serif">Net</text>
+      <line x1="0" y1="76" x2="84" y2="76" stroke="rgba(255,255,255,.1)" stroke-width="1"/>
+    </g>
+    <polyline points="286,80 299,64 312,69 325,48 338,54 351,34 364,40 377,22 390,27 403,13"
+      fill="none" stroke="rgba(255,255,255,.25)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="403" cy="13" r="2.5" fill="rgba(255,255,255,.4)"/>
+    <line x1="284" y1="28" x2="406" y2="28" stroke="rgba(255,255,255,.05)" stroke-width="1"/>
+    <line x1="284" y1="48" x2="406" y2="48" stroke="rgba(255,255,255,.05)" stroke-width="1"/>
+    <line x1="284" y1="66" x2="406" y2="66" stroke="rgba(255,255,255,.05)" stroke-width="1"/>
+  </svg>
+</header>
+
+<!-- UPLOAD SECTION -->
+<div class="upload-section">
+  <div class="upload-grid">
+    <!-- LOI -->
+    <div class="uc" id="ucLOI">
+      <input type="file" id="loiFile" accept=".pdf,.txt" style="display:none" onchange="handleLOI(this.files[0])"/>
+      <div class="uc-top">
+        <div class="uc-name">
+          <div class="uc-ic blue"><svg width="12" height="12" viewBox="0 0 24 24" fill="#0C447C"><path d="M14 2H6c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V8l-6-6zm4 18H6V4h7v5h5v11z"/></svg></div>
+          Letter of Intent
+        </div>
+        <span class="uc-bdg bdg-wait" id="ucLOIbdg">Awaiting</span>
+      </div>
+      <div class="uc-hint" id="ucLOIhint">PDF or TXT &middot; PP, ARR, WC cap, DR threshold extracted by AI</div>
+      <div class="uc-vals" id="ucLOIvals"></div>
+      <div class="uc-proc-lbl" id="ucLOIproc"><div class="spin"></div><span id="ucLOIprocTxt">Processing</span></div>
+      <button class="uc-btn up" onclick="document.getElementById('loiFile').click()">Upload</button>
+    </div>
+    <!-- ARR -->
+    <div class="uc" id="ucARR">
+      <input type="file" id="arrFile" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleARR(this.files[0])"/>
+      <div class="uc-top">
+        <div class="uc-name">
+          <div class="uc-ic amb"><svg width="12" height="12" viewBox="0 0 24 24" fill="#633806"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm-7 3l5 5h-3v4h-4v-4H7l5-5z"/></svg></div>
+          ARR Report
+        </div>
+        <span class="uc-bdg bdg-wait" id="ucARRbdg">Awaiting</span>
+      </div>
+      <div class="uc-hint" id="ucARRhint">CSV or XLSX &middot; validated in-force ARR extracted by AI</div>
+      <div class="uc-vals" id="ucARRvals"></div>
+      <div class="uc-proc-lbl" id="ucARRproc"><div class="spin"></div><span id="ucARRprocTxt">Processing</span></div>
+      <button class="uc-btn up" onclick="document.getElementById('arrFile').click()">Upload</button>
+    </div>
+    <!-- BS -->
+    <div class="uc" id="ucBS">
+      <input type="file" id="bsFile" accept=".csv,.xlsx,.xls" style="display:none" onchange="handleBS(this.files[0])"/>
+      <div class="uc-top">
+        <div class="uc-name">
+          <div class="uc-ic blue"><svg width="12" height="12" viewBox="0 0 24 24" fill="#0C447C"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zM9 17H7v-7h2v7zm4 0h-2V7h2v10zm4 0h-2v-4h2v4z"/></svg></div>
+          Balance Sheet
+        </div>
+        <span class="uc-bdg bdg-wait" id="ucBSbdg">Awaiting</span>
+      </div>
+      <div class="uc-hint" id="ucBShint">XLSX &middot; AI reads Assumed column &middot; WC + Deferred Revenue split</div>
+      <div class="uc-vals" id="ucBSvals"></div>
+      <div class="uc-proc-lbl" id="ucBSproc"><div class="spin"></div><span id="ucBSprocTxt">Processing</span></div>
+      <button class="uc-btn up" onclick="document.getElementById('bsFile').click()">Upload</button>
+    </div>
+  </div>
+  <div class="skip-link"><a href="#" onclick="skipLOI();return false;">Skip &mdash; enter manually</a></div>
+</div>
+
+<!-- MAIN CONTENT -->
+<div id="mainContent" style="display:none">
+<div class="body">
+
+<!-- LEFT COLUMN -->
+<div class="col col-l">
+
+  <div class="slbl">Deal information</div>
+  <div class="card">
+    <div class="g2">
+      <div class="fg"><div class="fl">Target / Deal</div><input class="fi" id="dealName" placeholder="Company name" oninput="render()"/></div>
+      <div class="fg"><div class="fl">Buyer</div><input class="fi" id="buyerName" placeholder="Acquirer" oninput="render()"/></div>
+    </div>
+    <div class="g2">
+      <div class="fg">
+        <div class="fl">Base Purchase Price</div>
+        <div class="ir"><span class="px2" id="symBP">$</span><input type="number" class="ni" id="basePP" placeholder="0" oninput="render()"/></div>
+      </div>
+      <div class="fg">
+        <div class="fl">Validated In-Force ARR</div>
+        <div class="ir"><span class="px2" id="symARR">$</span><input type="number" class="ni" id="validatedARR" placeholder="0" oninput="render()"/></div>
+      </div>
+    </div>
+    <input type="hidden" id="dealCurrency" value="USD"/>
+    <div id="metRow"></div>
+  </div>
+
+  <div class="slbl">Closing adjustments</div>
+
+  <!-- WORKING CAPITAL -->
+  <div class="ah op" id="hWC" onclick="tog('WC')">
+    <div class="al">
+      <label class="tog" onclick="event.stopPropagation()"><input type="checkbox" id="wcOn" checked onchange="render()"/><span class="tsl"></span></label>
+      <span class="at">Working Capital</span>
+      <span class="badge bk" id="bWC">Not entered</span>
+    </div>
+    <span class="chv op" id="cWC">&#9660;</span>
+  </div>
+  <div class="ab op" id="aWC">
+    <div style="font-size:11px;color:#888780;margin-bottom:10px;line-height:1.6">
+      Tangible WC = Net AR &minus; Assumed Liabilities &nbsp;&middot;&nbsp; Increases capped at <strong id="wcCapLbl">5</strong>% of ARR
+    </div>
+    <div class="g2">
+      <div class="fg">
+        <div class="fl">Net AR / Current Assets <span id="bsNote" style="color:#1434A4;display:none;font-weight:700">&middot; from BS</span></div>
+        <div class="ir"><span class="px2" id="symWC1">$</span><input type="number" class="ni" id="wcAR" placeholder="0" oninput="render()"/></div>
+      </div>
+      <div class="fg">
+        <div class="fl">Employee Termination Costs</div>
+        <div class="ir"><span class="px2" id="symWC2">$</span><input type="number" class="ni" id="wcEmp" placeholder="0" oninput="render()"/></div>
+      </div>
+      <div class="fg">
+        <div class="fl">Ongoing Lease Obligations</div>
+        <div class="ir"><span class="px2" id="symWC3">$</span><input type="number" class="ni" id="wcLease" placeholder="0" oninput="render()"/></div>
+      </div>
+      <div class="fg">
+        <div class="fl">Other Assumed Liabilities</div>
+        <div class="ir"><span class="px2" id="symWC4">$</span><input type="number" class="ni" id="wcOther" placeholder="0" oninput="render()"/></div>
+      </div>
+    </div>
+    <div style="margin-top:8px">
+      <div class="fl" style="margin-bottom:4px">Increase Cap (% of ARR)</div>
+      <div class="psr"><input type="number" class="pi" id="wcCap" value="5" step="0.1" oninput="render()"/><span class="pss">%</span></div>
+    </div>
+    <div id="wcPrev"></div>
+  </div>
+
+  <!-- DEFERRED REVENUE -->
+  <div class="ah op" id="hDR" onclick="tog('DR')">
+    <div class="al">
+      <label class="tog" onclick="event.stopPropagation()"><input type="checkbox" id="drOn" checked onchange="render()"/><span class="tsl"></span></label>
+      <span class="at">Deferred Revenue</span>
+      <span class="badge bk" id="bDR">Not entered</span>
+    </div>
+    <span class="chv op" id="cDR">&#9660;</span>
+  </div>
+  <div class="ab op" id="aDR">
+    <div style="font-size:11px;color:#888780;margin-bottom:10px;line-height:1.6">
+      Deduct: Software DR exceeding <strong id="drThLbl">50</strong>% of ARR + 100% of Non-Software DR
+    </div>
+    <div class="g2">
+      <div class="fg">
+        <div class="fl">Software Deferred Revenue <span id="drNote" style="color:#1434A4;display:none;font-weight:700">&middot; from BS</span></div>
+        <div class="ir"><span class="px2" id="symDR1">$</span><input type="number" class="ni" id="swDR" placeholder="0" oninput="render()"/></div>
+      </div>
+      <div class="fg">
+        <div class="fl">Non-Software Deferred Revenue</div>
+        <div class="ir"><span class="px2" id="symDR2">$</span><input type="number" class="ni" id="nswDR" placeholder="0" oninput="render()"/></div>
+      </div>
+    </div>
+    <div style="margin-top:8px">
+      <div class="fl" style="margin-bottom:4px">SW DR Threshold (% of ARR)</div>
+      <div class="psr"><input type="number" class="pi" id="drTh" value="50" step="0.1" oninput="render()"/><span class="pss">%</span></div>
+    </div>
+    <div id="drPrev"></div>
+  </div>
+
+  <!-- DYNAMIC MODULES (from LOI) -->
+  <div id="dynMods"></div>
+
+  <!-- CUSTOM ADJUSTMENTS -->
+  <div class="ah" id="hCA" onclick="tog('CA')">
+    <div class="al"><span class="at">Custom Adjustments</span><span class="badge bk" id="bCA">None</span></div>
+    <span class="chv" id="cCA">&#9660;</span>
+  </div>
+  <div class="ab" id="aCA">
+    <div id="cajList"></div>
+    <button class="add-btn" onclick="addCaj()">+ Add adjustment</button>
+  </div>
+
+  <!-- HOLDBACK (conditional) -->
+  <div id="hbSection" style="display:none">
+    <div class="ah" id="hHB" onclick="tog('HB')">
+      <div class="al"><span class="at">Employee &amp; Lease Holdbacks</span><span class="badge by">Informational</span></div>
+      <span class="chv" id="cHB">&#9660;</span>
+    </div>
+    <div class="ab" id="aHB">
+      <div style="font-size:11px;color:#888780;margin-bottom:10px;line-height:1.6">Included in WC. Unspent amounts returned to Seller 6 months post-close. Not a direct price deduction.</div>
+      <div class="g2">
+        <div class="fg"><div class="fl">Employee Termination Holdback</div><div class="ir"><span class="px2" id="symHB1">$</span><input type="number" class="ni" id="hbEmp" placeholder="0" oninput="render()"/></div></div>
+        <div class="fg"><div class="fl">Facility Lease Holdback</div><div class="ir"><span class="px2" id="symHB2">$</span><input type="number" class="ni" id="hbLease" placeholder="0" oninput="render()"/></div></div>
+      </div>
+      <div id="hbNote"></div>
+    </div>
+  </div>
+
+</div><!-- /col-l -->
+
+<!-- RIGHT COLUMN -->
+<div class="col" id="rightCol">
+  <div class="empty" id="emptyState">
+    <div class="ei">&#128203;</div>
+    <div class="et">Upload an LOI to begin</div>
+    <div class="es">Or skip to enter manually</div>
+  </div>
+</div>
+
+</div><!-- /body -->
+</div><!-- /mainContent -->
+
+<!-- FIXED BUTTONS -->
+<button class="exp-btn" onclick="window.print()">&#128196; Export PDF</button>
+<button class="chat-fab" onclick="togChat()" title="Ask the analyst">
+  <svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+</button>
+
+<!-- CHAT PANEL -->
+<div class="cpanel hidden" id="chatPanel">
+  <div class="chdr">
+    <div><div class="chdr-t">Deal Analyst</div><div class="chdr-s">Senior M&amp;A &middot; ask anything</div></div>
+    <button class="cclose" onclick="togChat()">&#215;</button>
+  </div>
+  <div class="cmsgs" id="chatMsgs">
+    <div class="cmsg a">Senior M&amp;A analyst here. Upload your LOI and financials, then ask me anything &mdash; deal risks, whether the multiple is fair, what you&rsquo;re missing, or where to push back in negotiations.</div>
+  </div>
+  <div class="cpills" id="chatPills">
+    <span class="cpill" onclick="qChat('Review this deal and flag all risks')">&#128680; Flag risks</span>
+    <span class="cpill" onclick="qChat('Is the EV/ARR multiple fair for this type of business?')">EV/ARR multiple</span>
+    <span class="cpill" onclick="qChat('What standard adjustments am I missing?')">Missing adjustments</span>
+    <span class="cpill" onclick="qChat('Where will the seller push back in negotiations?')">Negotiation intel</span>
+    <span class="cpill" onclick="qChat('What is the downside scenario if ARR comes in 20% below validation?')">Downside scenario</span>
+  </div>
+  <div class="cinput-row">
+    <textarea class="cinput" id="chatInput" placeholder="Ask anything about this deal..." rows="1"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();doChat()}"
+      oninput="this.style.height='auto';this.style.height=Math.min(this.scrollHeight,80)+'px'"></textarea>
+    <button class="csend" onclick="doChat()"><svg width="13" height="13" viewBox="0 0 24 24" fill="white"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg></button>
+  </div>
+</div>
+
+</div><!-- /shell -->
+
+<script>
+
+if(typeof pdfjsLib!=='undefined')
+  pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let STATE = {
+  currency: 'USD',
+  dynMods: [],
+  cajs: [],
+  cajId: 0,
+  hasHoldback: false,
+  chatOpen: false,
+  chatMsgs: [],
+  uploaded: {loi:false, arr:false, bs:false},
+  insightDone: false
+};
+
+// ── CURRENCY ──────────────────────────────────────────────────────────────────
+function sym(){ const c=(document.getElementById('dealCurrency')||{}).value||STATE.currency; return c==='GBP'?'\u00a3':c==='EUR'?'\u20ac':c==='AUD'?'A$':c==='CAD'?'C$':'$'; }
+function setCurrency(c){ STATE.currency=c; const el=document.getElementById('dealCurrency'); if(el)el.value=c; document.querySelectorAll('.px2').forEach(e=>e.textContent=sym()); }
+function fmtM(x){ const s=x<0?'-':''; return s+sym()+Math.abs(x/1e6).toFixed(3)+'M'; }
+function fmtK(x){ if(x===null||x===undefined)return '\u2014'; if(Math.abs(x)>=1e6)return fmtM(x); const s=x<0?'-':''; return s+sym()+Math.abs(x/1000).toFixed(1)+'K'; }
+function pct(x,b){ return b?((x/b)*100).toFixed(1)+'%':'\u2014'; }
+
+// ── DOM HELPERS ───────────────────────────────────────────────────────────────
+const $=id=>document.getElementById(id);
+const nv=id=>parseFloat(($(''+id)||{}).value||'0')||0;
+const chk=id=>($(''+id)||{}).checked!==false;
+const vv=id=>($(''+id)||{}).value||'';
+
+// ── UPLOAD CARD HELPERS ───────────────────────────────────────────────────────
+function ucProc(id, msg){
+  const el=$(id), bdg=$(id+'bdg'), proc=$(id+'proc'), pt=$(id+'procTxt');
+  if(el){el.className='uc proc';}
+  if(bdg){bdg.textContent='Processing';bdg.className='uc-bdg bdg-proc';}
+  if(proc){proc.style.display='flex';}
+  if(pt){pt.textContent=msg||'Processing';}
+}
+function ucDone(id, html){
+  const el=$(id), bdg=$(id+'bdg'), proc=$(id+'proc'), vals=$(id+'vals');
+  const btn=el?el.querySelector('.uc-btn'):null;
+  if(el){el.className='uc done';}
+  if(bdg){bdg.textContent='Done';bdg.className='uc-bdg bdg-done';}
+  if(proc){proc.style.display='none';}
+  if(vals&&html){vals.style.display='block';vals.innerHTML=html;}
+  if(btn){btn.textContent='Replace';btn.className='uc-btn done';}
+}
+function ucWait(id){
+  const el=$(id), bdg=$(id+'bdg'), proc=$(id+'proc'), vals=$(id+'vals');
+  const btn=el?el.querySelector('.uc-btn'):null;
+  if(el){el.className='uc';}
+  if(bdg){bdg.textContent='Awaiting';bdg.className='uc-bdg bdg-wait';}
+  if(proc){proc.style.display='none';}
+  if(vals){vals.style.display='none';vals.innerHTML='';}
+  if(btn){btn.textContent='Upload';btn.className='uc-btn up';}
+}
+function ucErr(id){ ucWait(id); }
+
+// ── ACCORDION ─────────────────────────────────────────────────────────────────
+function tog(id){
+  const h=$('h'+id), a=$('a'+id), c=$('c'+id);
+  if(!a)return;
+  const op=a.classList.contains('op');
+  a.classList.toggle('op',!op);
+  if(h)h.classList.toggle('op',!op);
+  if(c)c.classList.toggle('op',!op);
+}
+
+// ── PDF EXTRACTION ────────────────────────────────────────────────────────────
+async function extractPDF(file){
+  const ab=await file.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:ab}).promise;
+  let text='';
+  for(let i=1;i<=pdf.numPages;i++){
+    const pg=await pdf.getPage(i);
+    const c=await pg.getTextContent();
+    text+=c.items.map(s=>s.str).join(' ')+'\n';
+  }
+  return text;
+}
+
+// ── LOI HANDLER ───────────────────────────────────────────────────────────────
+async function handleLOI(file){
+  if(!file)return;
+  ucProc('ucLOI','Reading LOI');
+  try{
+    const text=file.name.toLowerCase().endsWith('.pdf')||file.type==='application/pdf'
+      ?await extractPDF(file):await file.text();
+    ucProc('ucLOI','Extracting with AI');
+    const resp=await fetch('/api/parse-loi',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text})});
+    const p=await resp.json();
+    if(!resp.ok)throw new Error(p.error||'API error '+resp.status);
+    if(p.currency)setCurrency(p.currency);
+    if(p.basePP){$('basePP').value=p.basePP;}
+    if(p.validatedARR){$('validatedARR').value=p.validatedARR;}
+    if(p.wcCapPct){$('wcCap').value=p.wcCapPct;}
+    if(p.drThreshPct){$('drTh').value=p.drThreshPct;}
+    if(p.targetName){$('dealName').value=p.targetName;}
+    if(p.buyerName){$('buyerName').value=p.buyerName;}
+    if(p.indiaPct){
+      STATE.dynMods=STATE.dynMods.filter(m=>m.id!=='india');
+      STATE.dynMods.push({id:'india',title:'India Reserve Adjustment',note:'Deduct '+p.indiaPct+'% of India subsidiary Reserve & Surplus balance at Closing',aId:'indAmt',aLbl:'Reserve & Surplus Balance',pId:'indPct',pDef:p.indiaPct,pLbl:'Deduction %'});
+    }
+    if(p.additionalAdjustments&&p.additionalAdjustments.length){
+      p.additionalAdjustments.forEach((a,i)=>{
+        const id='dyn'+i;
+        STATE.dynMods=STATE.dynMods.filter(m=>m.id!==id);
+        STATE.dynMods.push({id,title:a.name,note:a.description,aId:id+'Amt',aLbl:'Amount',pId:id+'Pct',pDef:100,pLbl:'Applied %'});
+      });
+    }
+    if(p.hasHoldback){STATE.hasHoldback=true;$('hbSection').style.display='block';}
+    renderDyn();
+    const s=sym();
+    const tags=[];
+    if(p.basePP)tags.push('<strong>'+s+(p.basePP/1e6).toFixed(2)+'M</strong> PP');
+    if(p.wcCapPct)tags.push('<strong>'+p.wcCapPct+'%</strong> WC cap');
+    if(p.drThreshPct)tags.push('<strong>'+p.drThreshPct+'%</strong> DR threshold');
+    if(p.hasHoldback)tags.push('Holdback detected');
+    ucDone('ucLOI',tags.join(' &middot; ')||'Fields extracted');
+    $('pLOI').textContent='LOI \u2713';$('pLOI').className='hpill done';
+    STATE.uploaded.loi=true;
+    showMain();
+    render();
+    checkInsight();
+  }catch(e){
+    console.error('LOI error:',e);
+    ucWait('ucLOI');
+    alert('LOI extraction failed: '+e.message+'\nYou can still enter values manually below.');
+    showMain();
+  }
+}
+
+// ── ARR HANDLER ───────────────────────────────────────────────────────────────
+async function handleARR(file){
+  if(!file)return;
+  ucProc('ucARR','Reading ARR report');
+  try{
+    const ab=await file.arrayBuffer();
+    let rows=[],tabName='';
+    if(file.name.toLowerCase().endsWith('.csv')){
+      rows=new TextDecoder().decode(ab).trim().split('\n').map(l=>l.split(',').map(c=>c.trim().replace(/^"|"$/g,'')));
+      tabName='CSV';
+    }else{
+      const wb=XLSX.read(ab,{type:'array'});
+      const tab=wb.SheetNames.find(s=>/arr/i.test(s))||wb.SheetNames[0];
+      tabName=tab;rows=XLSX.utils.sheet_to_json(wb.Sheets[tab],{header:1,defval:''});
+    }
+    ucProc('ucARR','Extracting with AI');
+    const resp=await fetch('/api/parse-arr',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rows,sheetName:tabName})});
+    const d=await resp.json();
+    if(!resp.ok)throw new Error(d.error||'API error');
+    if(d.currency)setCurrency(d.currency);
+    if(d.validatedARR){$('validatedARR').value=d.validatedARR;}
+    const s=sym();
+    const tags=d.validatedARR?['<strong>'+s+(d.validatedARR/1e6).toFixed(2)+'M</strong> ARR']:['Parsed'];
+    ucDone('ucARR',tags.join(' &middot; '));
+    $('pARR').textContent='ARR \u2713';$('pARR').className='hpill done';
+    STATE.uploaded.arr=true;
+    render();checkInsight();
+  }catch(e){
+    console.error('ARR error:',e);ucWait('ucARR');alert('ARR extraction failed: '+e.message);
+  }
+}
+
+// ── BS HANDLER ────────────────────────────────────────────────────────────────
+async function handleBS(file){
+  if(!file)return;
+  ucProc('ucBS','Reading balance sheet');
+  try{
+    const ab=await file.arrayBuffer();
+    let rows=[],tabName='';
+    if(file.name.toLowerCase().endsWith('.csv')){
+      rows=new TextDecoder().decode(ab).trim().split('\n').map(l=>l.split(',').map(c=>c.trim().replace(/^"|"$/g,'')));
+      tabName='CSV';
+    }else{
+      const wb=XLSX.read(ab,{type:'array'});
+      const tab=wb.SheetNames.find(s=>/closing financial statements/i.test(s))
+        ||wb.SheetNames.find(s=>/fin.?68/i.test(s))
+        ||wb.SheetNames.find(s=>/closing.?balance|balance.?sheet/i.test(s))
+        ||wb.SheetNames[0];
+      tabName=tab;rows=XLSX.utils.sheet_to_json(wb.Sheets[tab],{header:1,defval:''});
+    }
+    ucProc('ucBS','Extracting with AI');
+    const resp=await fetch('/api/parse-bs',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rows,sheetName:tabName})});
+    const d=await resp.json();
+    if(!resp.ok)throw new Error(d.error||'API error '+resp.status);
+    if(d.wcAssets!=null){$('wcAR').value=Math.round(d.wcAssets);const n=$('bsNote');if(n)n.style.display='inline';}
+    if(d.wcLiabilities!=null){$('wcOther').value=Math.round(d.wcLiabilities);}
+    if(d.deferredRevenue){
+      if(d.deferredRevenue.software){$('swDR').value=Math.round(d.deferredRevenue.software);const n=$('drNote');if(n)n.style.display='inline';}
+      if(d.deferredRevenue.services){$('nswDR').value=Math.round(d.deferredRevenue.services);}
+    }
+    const s=sym();
+    const wc=(d.wcAssets||0)-(d.wcLiabilities||0);
+    const tags=['<strong>'+s+(Math.abs(wc)/1e3).toFixed(0)+'K</strong> Tangible WC'];
+    if(d.deferredRevenue&&d.deferredRevenue.total)tags.push('<strong>'+s+(d.deferredRevenue.total/1e6).toFixed(2)+'M</strong> DR');
+    ucDone('ucBS',tags.join(' &middot; '));
+    $('pBS').textContent='BS \u2713';$('pBS').className='hpill done';
+    STATE.uploaded.bs=true;
+    render();checkInsight();
+  }catch(e){
+    console.error('BS error:',e);ucWait('ucBS');alert('Balance sheet extraction failed: '+e.message);
+  }
+}
+
+// ── SHOW MAIN ─────────────────────────────────────────────────────────────────
+function showMain(){
+  $('mainContent').style.display='block';
+  buildRight();
+}
+function skipLOI(){ showMain(); render(); }
+
+// ── DYNAMIC MODULES ───────────────────────────────────────────────────────────
+function renderDyn(){
+  $('dynMods').innerHTML=STATE.dynMods.map(m=>`
+    <div class="ah op" id="h${m.id}" onclick="tog('${m.id}')">
+      <div class="al">
+        <label class="tog" onclick="event.stopPropagation()"><input type="checkbox" id="${m.id}On" checked onchange="render()"/><span class="tsl"></span></label>
+        <span class="at">${m.title}</span><span class="badge bk" id="b${m.id}">Not entered</span>
+      </div>
+      <span class="chv op" id="c${m.id}">&#9660;</span>
+    </div>
+    <div class="ab op" id="a${m.id}">
+      <div style="font-size:11px;color:#888780;margin-bottom:10px;line-height:1.6">${m.note||''}</div>
+      <div class="g2">
+        <div class="fg"><div class="fl">${m.aLbl}</div><div class="ir"><span class="px2">${sym()}</span><input type="number" class="ni" id="${m.aId}" placeholder="0" oninput="render()"/></div></div>
+        <div class="fg"><div class="fl">${m.pLbl}</div><div class="psr"><input type="number" class="pi" id="${m.pId}" value="${m.pDef}" step="0.1" oninput="render()"/><span class="pss">%</span></div></div>
+      </div>
+      <div id="${m.id}Prev"></div>
+    </div>`).join('');
+}
+
+// ── CUSTOM ADJUSTMENTS ────────────────────────────────────────────────────────
+function addCaj(){ STATE.cajs.push({id:++STATE.cajId,name:'',val:'',dir:'deduct'}); renderCaj(); render(); }
+function delCaj(id){ STATE.cajs=STATE.cajs.filter(c=>c.id!==id); renderCaj(); render(); }
+function updCaj(id,f,v){ const c=STATE.cajs.find(x=>x.id===id); if(c)c[f]=v; render(); }
+function renderCaj(){
+  $('cajList').innerHTML=STATE.cajs.map(c=>`
+    <div class="caj-row">
+      <input class="ni" style="flex:2;background:#F2F0EB;border:1.5px solid #C8C5BE;border-radius:6px;padding:6px 8px;font-size:11px" placeholder="Name" value="${c.name}" oninput="updCaj(${c.id},'name',this.value)"/>
+      <select class="sel" onchange="updCaj(${c.id},'dir',this.value)">
+        <option value="add" ${c.dir==='add'?'selected':''}>+ Add</option>
+        <option value="deduct" ${c.dir==='deduct'?'selected':''}>&#8722; Deduct</option>
+      </select>
+      <input type="number" class="ni" style="flex:1;background:#F2F0EB;border:1.5px solid #C8C5BE;border-radius:6px;padding:6px 8px;font-size:11px" placeholder="Amount" value="${c.val}" oninput="updCaj(${c.id},'val',this.value)"/>
+      <button class="del-btn" onclick="delCaj(${c.id})">&#215;</button>
+    </div>`).join('');
+}
+
+// ── BUILD RIGHT PANEL ─────────────────────────────────────────────────────────
+function buildRight(){
+  $('rightCol').innerHTML=`
+    <div class="slbl">Purchase price waterfall</div>
+    <div class="card">
+      <div class="wf-name" id="wfName">&mdash;</div>
+      <div class="wf-meta" id="wfMeta"></div>
+      <div id="wfRows"></div>
+      <div id="netBox"></div>
+    </div>
+    <div class="ibox">
+      <div class="ihdr">
+        <span class="ititle">Deal Intelligence</span>
+        <span class="istamp" id="iStamp">Awaiting data</span>
+      </div>
+      <div id="iContent"><div class="iph">Upload LOI, ARR report, and balance sheet to generate full deal analysis &mdash; valuation benchmarks, risk flags, and negotiation positioning.</div></div>
+    </div>
+    <button class="act-btn" onclick="togChat()">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="white"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+      Ask analyst
+    </button>
+    <button class="sec-btn" onclick="window.print()">&#128196; Export PDF</button>
+    <div class="agent-wrap">
+      <div class="agent-bubble">
+        <div class="abt" id="aBubbleT">Ready to analyse</div>
+        <div class="abs" id="aBubbleS">Upload your documents &mdash; I will flag risks, benchmark the multiple, and tell you where to push back.</div>
+      </div>
+      <button class="agent-btn" onclick="togChat()">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="white"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg>
+      </button>
+    </div>
+    <div id="hbCard" style="display:none;margin-top:10px">
+      <div class="slbl">Holdback tracker</div>
+      <div class="card"><div id="hbRows"></div></div>
+    </div>`;
+}
+
+// ── MAIN RENDER ───────────────────────────────────────────────────────────────
+function render(){
+  if(!$('wfRows'))return;
+
+  // Update all currency symbols
+  document.querySelectorAll('.px2').forEach(e=>e.textContent=sym());
+
+  const PP=nv('basePP'), ARR=nv('validatedARR');
+  const wcCapPct=nv('wcCap')||5, drThPct=nv('drTh')||50;
+  const wcCap=ARR*(wcCapPct/100), drTh=ARR*(drThPct/100);
+
+  // Labels
+  const wcLbl=$('wcCapLbl'); if(wcLbl)wcLbl.textContent=wcCapPct;
+  const drLbl=$('drThLbl'); if(drLbl)drLbl.textContent=drThPct;
+
+  // WC
+  const wcAR=nv('wcAR'), wcEmp=nv('wcEmp'), wcL=nv('wcLease'), wcOth=nv('wcOther');
+  const tangWC=wcAR-wcEmp-wcL-wcOth;
+  const wcOn=chk('wcOn');
+  const wcAdj=wcOn?(tangWC>0?Math.min(tangWC,wcCap):tangWC):0;
+  const wcCapped=wcOn&&tangWC>0&&tangWC>wcCap;
+  const wcHas=wcAR||wcEmp||wcL||wcOth;
+
+  // DR
+  const swDR=nv('swDR'), nswDR=nv('nswDR');
+  const drOn=chk('drOn');
+  const swExcess=Math.max(0,swDR-drTh);
+  const drAdj=drOn?-(swExcess+nswDR):0;
+  const drHas=swDR||nswDR;
+
+  // Dynamic
+  let dynTotal=0;
+  STATE.dynMods.forEach(m=>{
+    const on=chk(m.id+'On'), amt=nv(m.aId), p=nv(m.pId);
+    const adj=on?-(amt*(p/100)):0; dynTotal+=adj;
+    const bdg=$('b'+m.id); if(bdg){bdg.textContent=amt?fmtK(adj):'Not entered';bdg.className='badge '+(adj<0?'br':amt?'bg':'bk');}
+    const prev=$(m.id+'Prev');
+    if(prev)prev.innerHTML=amt?`<div class="pbox"><div class="pr"><span>${m.aLbl}</span><span>${fmtK(amt)}</span></div><div class="pr"><span>Rate</span><span>${p}%</span></div><div class="ptot"><span>Adjustment</span><span style="color:#791F1F">${fmtK(adj)}</span></div></div>`:'';
+  });
+
+  // Custom
+  let cajTotal=0;
+  STATE.cajs.forEach(c=>{const v=parseFloat(c.val)||0;cajTotal+=c.dir==='add'?v:-v;});
+
+  const netPP=PP+wcAdj+drAdj+dynTotal+cajTotal;
+  const delta=netPP-PP;
+
+  // Met row
+  const metR=$('metRow');
+  if(metR&&ARR>0){
+    metR.innerHTML=`<div class="met-row">
+      <span class="met">WC cap <strong>${fmtK(wcCap)}</strong></span>
+      <span class="met">DR threshold <strong>${fmtK(drTh)}</strong></span>
+      ${PP>0?'<span class="met">EV/ARR <strong>'+(PP/ARR).toFixed(2)+'x</strong></span>':''}
+    </div>`;
+  }
+
+  // Badges
+  function bd(id,txt,cls){const b=$(id);if(b){b.textContent=txt;b.className='badge '+cls;}}
+  bd('bWC',wcOn&&wcHas?(wcAdj>=0?'+':'')+fmtK(wcAdj):'Not entered',wcOn&&wcHas?(wcAdj>=0?'bg':'br'):'bk');
+  bd('bDR',drOn&&drHas?fmtK(drAdj):'Not entered',drOn&&drHas&&drAdj<0?'br':'bk');
+  bd('bCA',STATE.cajs.length?STATE.cajs.length+' \u00b7 '+(cajTotal>=0?'+':'')+fmtK(cajTotal):'None',cajTotal>0?'bg':cajTotal<0?'br':'bk');
+
+  // WC Preview
+  const wcPrev=$('wcPrev');
+  if(wcPrev)wcPrev.innerHTML=wcHas?`<div class="pbox">
+    <div class="pr"><span>Net AR / Current Assets</span><span style="color:#27500A">+${fmtK(wcAR)}</span></div>
+    <div class="pr"><span>Assumed liabilities</span><span style="color:#791F1F">&#8722;${fmtK(wcEmp+wcL+wcOth)}</span></div>
+    <div class="ptot"><span>Tangible WC</span><span style="color:${tangWC>=0?'#27500A':'#791F1F'}">${fmtK(tangWC)}</span></div>
+    ${wcCapped?`<div class="pwarn">&#9888; Capped at ${fmtK(wcCap)} (${wcCapPct}% of ARR) &middot; Uncapped: ${fmtK(tangWC)}</div>`:''}
+  </div>`:'';
+
+  // DR Preview
+  const drPrev=$('drPrev');
+  if(drPrev)drPrev.innerHTML=drHas?`<div class="pbox">
+    <div class="pr"><span>Software DR</span><span>${fmtK(swDR)}</span></div>
+    <div class="pr"><span>Threshold (${drThPct}% of ARR)</span><span>${fmtK(drTh)}</span></div>
+    <div class="pr"><span>SW excess deducted</span><span style="color:#791F1F">&#8722;${fmtK(swExcess)}</span></div>
+    <div class="pr"><span>Non-SW DR (100%)</span><span style="color:#791F1F">&#8722;${fmtK(nswDR)}</span></div>
+    <div class="ptot"><span>Total DR Adjustment</span><span style="color:${drAdj<0?'#791F1F':'#1a1a1a'}">${fmtK(drAdj)}</span></div>
+  </div>`:'';
+
+  // Waterfall
+  const wfN=$('wfName'), wfM=$('wfMeta');
+  if(wfN)wfN.textContent=vv('dealName')||'Deal Name';
+  if(wfM)wfM.textContent='Buyer: '+(vv('buyerName')||'\u2014')+' \u00b7 '+new Date().toLocaleDateString('en-GB',{day:'numeric',month:'short',year:'numeric'});
+
+  function wfr(lbl,val,sub,cls){
+    if(val===null){return `<div class="wfr"><div><div class="wfl">${lbl}</div>${sub?`<div class="wfs">${sub}</div>`:''}</div><div class="wfv vd">\u2014</div></div>`;}
+    const vc=cls||(val>0?'vp':val<0?'vn':'');
+    const disp=cls?fmtK(val):(val>=0?'+':'')+fmtK(val);
+    return `<div class="wfr"><div><div class="wfl">${lbl}</div>${sub?`<div class="wfs">${sub}</div>`:''}</div><div class="wfv ${vc}">${disp}</div></div>`;
+  }
+
+  let rows=wfr('Base Purchase Price',PP,PP?fmtM(PP):undefined,'vb');
+  rows+='<div class="vsep"></div>';
+  rows+=wfr('Working Capital',wcOn?wcAdj:null,wcOn?(wcCapped?'Capped (raw '+fmtK(tangWC)+')':wcHas?'Tangible WC: '+fmtK(tangWC):'Enter inputs'):'Disabled');
+  rows+=wfr('Deferred Revenue',drOn?drAdj:null,drOn?(drHas?'SW excess '+fmtK(swExcess)+' + Non-SW '+fmtK(nswDR):'Enter inputs'):'Disabled');
+  STATE.dynMods.forEach(m=>{
+    const on=chk(m.id+'On'), amt=nv(m.aId), p=nv(m.pId), adj=on?-(amt*(p/100)):0;
+    rows+=wfr(m.title,on?adj:null,on&&amt?fmtK(amt)+' \u00d7 '+p+'%':'Enter inputs');
+  });
+  STATE.cajs.forEach(c=>{const v=parseFloat(c.val)||0;rows+=wfr(c.name||'Custom',c.val?(c.dir==='add'?v:-v):null,'');});
+  rows+='<div class="vsep"></div>';
+  const wfRows=$('wfRows'); if(wfRows)wfRows.innerHTML=rows;
+
+  // Net box
+  const nb=$('netBox');
+  if(nb)nb.innerHTML=PP?`<div class="nbox">
+    <div><div class="nlbl">Net Purchase Price</div><div class="nval">${fmtM(netPP)}</div></div>
+    <div style="text-align:right">
+      <div class="ndv" style="color:${delta>0?'#fff':delta<0?'#FFB3AE':'rgba(255,255,255,.5)'}">${delta>=0?'+':''}${fmtK(delta)}</div>
+      <div class="npct">${pct(delta,PP)} vs base</div>
+    </div>
+  </div>`:'<div class="nbox"><div><div class="nlbl">Net Purchase Price</div><div style="font-size:15px;font-weight:600;color:rgba(255,255,255,.3)">Enter base PP \u2192</div></div></div>';
+
+  // Holdback card
+  const hbc=$('hbCard');
+  if(hbc){
+    const he=nv('hbEmp'), hl=nv('hbLease'), ht=he+hl;
+    if(STATE.hasHoldback&&ht>0){
+      hbc.style.display='block';
+      const hbR=$('hbRows');
+      if(hbR)hbR.innerHTML=wfr('Employee Termination',he||null,'Returned if unspent at 6mo')+wfr('Facility Lease',hl||null,'Returned if unspent at 6mo')+'<div class="vsep"></div>'+`<div class="wfr"><div class="wfl" style="font-weight:700">Total Holdback</div><div class="wfv" style="color:#BA7517">${fmtK(ht)}</div></div>`;
+    }else{hbc.style.display='none';}
+  }
+
+  // Holdback note
+  const hbN=$('hbNote');
+  if(hbN){const ht=nv('hbEmp')+nv('hbLease');hbN.innerHTML=ht?`<div class="pwarn">Tracked: <strong>${fmtK(ht)}</strong> &mdash; returned to seller if unspent at 6-month anniversary</div>`:''}
+
+  // Show generate insight button if data present but insight not yet done
+  if(!STATE.insightDone&&(PP||ARR)){
+    const ic=$('iContent');
+    if(ic&&!ic.querySelector('.igenBtn')){
+      ic.innerHTML='<div class="iph">Data detected &mdash; generate deal analysis when ready.</div><button class="igenBtn" onclick="triggerInsight()"><svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M19 3H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2z"/></svg>Generate Deal Intelligence</button>';
+    }
+  }
+}
+
+// ── RESET ─────────────────────────────────────────────────────────────────────
+function resetAll(){
+  ['dealName','buyerName','basePP','validatedARR','wcAR','wcEmp','wcLease','wcOther','swDR','nswDR','hbEmp','hbLease'].forEach(id=>{const e=$(id);if(e)e.value='';});
+  $('wcCap').value='5';$('drTh').value='50';
+  ['wcOn','drOn'].forEach(id=>{const e=$(id);if(e)e.checked=true;});
+  setCurrency('USD');
+  STATE={currency:'USD',dynMods:[],cajs:[],cajId:0,hasHoldback:false,chatOpen:false,chatMsgs:[],uploaded:{loi:false,arr:false,bs:false},insightDone:false};
+  ['ucLOI','ucARR','ucBS'].forEach(id=>ucWait(id));
+  ['pLOI','pARR','pBS'].forEach(id=>{const e=$(id);if(e){e.textContent=id==='pLOI'?'Awaiting LOI':id==='pARR'?'Awaiting ARR':'Awaiting balance sheet';e.className='hpill';}});
+  $('hbSection').style.display='none';
+  $('mainContent').style.display='none';
+  $('dynMods').innerHTML='';
+  $('cajList').innerHTML='';
+  const notes=['bsNote','drNote'];notes.forEach(id=>{const e=$(id);if(e)e.style.display='none';});
+}
+
+// ── CHAT ──────────────────────────────────────────────────────────────────────
+function togChat(){
+  STATE.chatOpen=!STATE.chatOpen;
+  const p=$('chatPanel');
+  if(p)p.classList.toggle('hidden',!STATE.chatOpen);
+  if(STATE.chatOpen){const ci=$('chatInput');if(ci)ci.focus();}
+}
+function getDealState(){
+  const PP=nv('basePP'),ARR=nv('validatedARR'),wcCap=nv('wcCap')||5,drTh=nv('drTh')||50;
+  const wcAR=nv('wcAR'),wcEmp=nv('wcEmp'),wcL=nv('wcLease'),wcOth=nv('wcOther');
+  const tangWC=wcAR-wcEmp-wcL-wcOth,wcCapAmt=ARR*(wcCap/100);
+  const wcAdj=chk('wcOn')?(tangWC>0?Math.min(tangWC,wcCapAmt):tangWC):0;
+  const swDR=nv('swDR'),nswDR=nv('nswDR'),drThAmt=ARR*(drTh/100);
+  const swExc=Math.max(0,swDR-drThAmt);
+  const drAdj=chk('drOn')?-(swExc+nswDR):0;
+  let dynTotal=0;STATE.dynMods.forEach(m=>{if(chk(m.id+'On'))dynTotal-=nv(m.aId)*(nv(m.pId)/100);});
+  let cajTotal=0;STATE.cajs.forEach(c=>{const v=parseFloat(c.val)||0;cajTotal+=c.dir==='add'?v:-v;});
+  const netPP=PP+wcAdj+drAdj+dynTotal+cajTotal;
+  return{dealName:vv('dealName'),buyerName:vv('buyerName'),currency:STATE.currency,basePP:PP,validatedARR:ARR,wcCapPct:wcCap,drThreshPct:drTh,wcNetAR:wcAR,wcEmpTerm:wcEmp,wcLease:wcL,wcOther:wcOth,tangibleWC:tangWC,wcCap:wcCapAmt,wcAdj,swDR,nswDR,drTh:drThAmt,swExcess:swExc,drAdj,netPP,delta:netPP-PP};
+}
+function addMsg(role,text){
+  STATE.chatMsgs.push({role,content:text});
+  const m=$('chatMsgs'); if(!m)return null;
+  const d=document.createElement('div');
+  d.className='cmsg '+(role==='user'?'u':'a');
+  d.textContent=text;
+  m.appendChild(d);m.scrollTop=m.scrollHeight;
+  return d;
+}
+async function doChat(){
+  const ci=$('chatInput'); if(!ci)return;
+  const text=ci.value.trim(); if(!text)return;
+  ci.value='';ci.style.height='auto';
+  const pills=$('chatPills');if(pills)pills.style.display='none';
+  addMsg('user',text);
+  const isImprove=/^\/improve\b|improve the (app|code|ui|calc)|add (a |an )?(feature|section|button|field)|change the (ui|design|layout|colour|color)|remove |fix the code/i.test(text);
+  if(isImprove){await doImprove(text);return;}
+  const td=document.createElement('div');td.className='cmsg a t';td.textContent='Thinking...';
+  const m=$('chatMsgs');if(m){m.appendChild(td);m.scrollTop=m.scrollHeight;}
+  try{
+    const resp=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:STATE.chatMsgs.slice(-12),dealState:getDealState()})});
+    const d=await resp.json();
+    if(!resp.ok)throw new Error(d.error||'API error');
+    td.remove();
+    addMsg('assistant',d.text);
+    if(d.action){
+      if(d.action.type==='SET_FIELD'){const e=$(d.action.field);if(e){e.value=d.action.value;render();}}
+      else if(d.action.type==='EXPORT_PDF')window.print();
+    }
+  }catch(e){td.remove();addMsg('assistant','Error: '+e.message);}
+}
+function qChat(text){const ci=$('chatInput');if(ci)ci.value=text;doChat();}
+async function doImprove(request){
+  const td=document.createElement('div');td.className='cmsg a t';td.textContent='Generating code improvement...';
+  const m=$('chatMsgs');if(m){m.appendChild(td);m.scrollTop=m.scrollHeight;}
+  try{
+    const codeResp=await fetch(window.location.href);
+    const code=await codeResp.text();
+    const resp=await fetch('/api/improve',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({request,currentCode:code,targetFile:'index.html'})});
+    const d=await resp.json();
+    if(!resp.ok)throw new Error(d.error||'API error');
+    td.remove();
+    const blob=new Blob([d.modifiedCode],{type:'text/html'});
+    const url=URL.createObjectURL(blob);
+    const div=document.createElement('div');
+    div.className='cmsg a';
+    div.innerHTML='Code updated for: <em>'+request+'</em><br><br><a href="'+url+'" download="index.html" style="background:#1434A4;color:#fff;padding:5px 12px;border-radius:6px;text-decoration:none;font-size:11px;font-weight:600">Download updated index.html</a><div style="font-size:10px;color:#888780;margin-top:6px">Upload to GitHub to deploy</div>';
+    if(m){m.appendChild(div);m.scrollTop=m.scrollHeight;}
+  }catch(e){td.remove();addMsg('assistant','Code generation failed: '+e.message);}
+}
+
+// ── DEAL INTELLIGENCE ─────────────────────────────────────────────────────────
+function checkInsight(){
+  if(STATE.insightDone)return;
+  const hasCore=STATE.uploaded.loi&&(STATE.uploaded.bs||STATE.uploaded.arr);
+  if(!hasCore)return;
+  STATE.insightDone=true;
+  setTimeout(()=>runInsight(),800);
+}
+function triggerInsight(){
+  if(STATE.insightDone)return;
+  STATE.insightDone=true;
+  runInsight();
+}
+async function runInsight(){
+  const ic=$('iContent'),stamp=$('iStamp');
+  if(ic)ic.innerHTML='<div class="iph" style="display:flex;align-items:center;justify-content:center;gap:8px"><div class="spin"></div>Generating deal intelligence...</div>';
+  if(stamp){stamp.textContent='Generating...';stamp.className='istamp';}
+  if(!STATE.chatOpen)togChat();
+  const m=$('chatMsgs');
+  if(m){
+    const div=document.createElement('div');
+    div.style.cssText='display:flex;align-items:center;gap:8px;margin:6px 0';
+    div.innerHTML='<div style="flex:1;height:1px;background:#C8C5BE"></div><span style="font-size:9px;color:#888780;font-weight:700;letter-spacing:.08em;text-transform:uppercase;white-space:nowrap">Auto Analysis</span><div style="flex:1;height:1px;background:#C8C5BE"></div>';
+    m.appendChild(div);
+    const td=document.createElement('div');td.className='cmsg a t';td.textContent='Analysing deal...';
+    m.appendChild(td);m.scrollTop=m.scrollHeight;
+    try{
+      const resp=await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:[{role:'user',content:'Generate full deal intelligence brief.'}],dealState:getDealState(),mode:'insight'})});
+      const d=await resp.json();
+      td.remove();
+      if(d.insight){
+        renderInsight(d.insight);
+        if(stamp){stamp.textContent=new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});stamp.className='istamp';}
+        const sumDiv=document.createElement('div');
+        sumDiv.style.cssText='background:#E6F1FB;border:1.5px solid #B5D4F4;border-radius:10px;padding:11px 13px;font-size:11px;line-height:1.7;color:#1a1a1a;margin:4px 0';
+        sumDiv.innerHTML='<div style="font-size:9px;font-weight:700;color:#0C447C;letter-spacing:.1em;text-transform:uppercase;margin-bottom:7px">Deal Intelligence</div>'+buildInsightSummary(d.insight);
+        if(m){m.appendChild(sumDiv);m.scrollTop=m.scrollHeight;}
+        STATE.chatMsgs.push({role:'user',content:'Auto analysis'});
+        STATE.chatMsgs.push({role:'assistant',content:buildInsightSummary(d.insight).replace(/<[^>]+>/g,'')});
+        const ab=$('aBubbleT'),as=$('aBubbleS');
+        if(ab)ab.textContent='Analysis complete';
+        if(as)as.textContent='Deal intelligence has been generated. Ask me anything about the numbers.';
+      }else{
+        if(ic)ic.innerHTML='<div class="iph">Analysis unavailable. Ask the analyst directly.</div>';
+      }
+    }catch(e){
+      td.remove();
+      if(ic)ic.innerHTML='<div class="iph">Analysis failed: '+e.message+'</div>';
+    }
+  }
+}
+function renderInsight(data){
+  const ic=$('iContent'); if(!ic)return;
+  const dots={red:'#E24B4A',amber:'#BA7517',green:'#639922',blue:'#1434A4',gray:'#888780'};
+  let html='';
+  if(data.metrics&&data.metrics.length){
+    html+='<div class="mstrip">';
+    data.metrics.forEach(m=>{
+      const bad=m.status==='high'||m.status==='negative'||m.status==='elevated';
+      const good=m.status==='positive'||m.status==='fair'||m.status==='low';
+      const col=bad?'#791F1F':good?'#27500A':'#1434A4';
+      html+=`<div class="ms"><div class="msv" style="color:${col}">${m.value}</div><div class="msl">${m.label}</div><div class="msb">${m.benchmark}</div></div>`;
+    });
+    html+='</div>';
+  }
+  if(data.sections){
+    data.sections.forEach((sec,si)=>{
+      if(si>0)html+='<div class="isep"></div>';
+      html+=`<div class="iseclbl">${sec.label}</div>`;
+      (sec.items||[]).forEach(item=>{
+        const col=dots[item.dot]||dots.gray;
+        const parts=item.text.split(':');
+        const bold=parts.length>1?`<strong>${parts[0]}:</strong>${parts.slice(1).join(':')}`:item.text;
+        html+=`<div class="iitem"><div class="idot" style="background:${col}"></div><div class="itxt">${bold}</div></div>`;
+      });
+    });
+  }
+  ic.innerHTML=html;
+}
+function buildInsightSummary(data){
+  let html='';
+  if(data.sections)data.sections.forEach(s=>{
+    html+=`<strong>${s.label}</strong><br>`;
+    (s.items||[]).slice(0,2).forEach(i=>{html+='\u00b7 '+i.text+'<br>';});
+    html+='<br>';
+  });
+  return html;
+}
+
+</script>
+</body>
+</html>
